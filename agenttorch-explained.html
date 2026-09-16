@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Study Notes — AgentTorch / Large Population Models, from the source code up</title>
+<style>
+:root{
+  --ground:#f5f4f0; --panel:#ffffff; --panel-2:#f6f5f1; --ink:#1a1a1c; --ink-soft:#33342f;
+  --muted:#5f6058; --faint:#8c8d82; --line:#e5e3da; --line-strong:#d0cec2;
+  --accent:#b5641a; --accent-soft:#f0e2cf; --accent-ink:#8a4a10;
+  --teal:#256b64; --teal-soft:#d8e8e4;
+  --good:#2b6e46; --good-soft:#dcebdf; --warn:#a6640f; --danger:#a83c2c; --danger-soft:#f0dcd6;
+  --shadow:0 1px 2px rgba(26,26,28,.05),0 8px 28px -14px rgba(26,26,28,.14);
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --read:730px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --ground:#101113; --panel:#17181b; --panel-2:#1c1e21; --ink:#eceae4; --ink-soft:#cbc9c1;
+    --muted:#9a998e; --faint:#6d6d64; --line:#282a2d; --line-strong:#383a3d;
+    --accent:#dd9a4a; --accent-soft:#352a19; --accent-ink:#eeb463;
+    --teal:#54b5a7; --teal-soft:#16302c; --good:#54bd83; --good-soft:#14281c;
+    --warn:#dd9a4a; --danger:#e07b6a; --danger-soft:#2c1713;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px -16px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="light"]{--ground:#f5f4f0;--panel:#ffffff;--panel-2:#f6f5f1;--ink:#1a1a1c;--ink-soft:#33342f;--muted:#5f6058;--faint:#8c8d82;--line:#e5e3da;--line-strong:#d0cec2;--accent:#b5641a;--accent-soft:#f0e2cf;--accent-ink:#8a4a10;--teal:#256b64;--teal-soft:#d8e8e4;--good:#2b6e46;--good-soft:#dcebdf;--warn:#a6640f;--danger:#a83c2c;--danger-soft:#f0dcd6;--shadow:0 1px 2px rgba(26,26,28,.05),0 8px 28px -14px rgba(26,26,28,.14);}
+:root[data-theme="dark"]{--ground:#101113;--panel:#17181b;--panel-2:#1c1e21;--ink:#eceae4;--ink-soft:#cbc9c1;--muted:#9a998e;--faint:#6d6d64;--line:#282a2d;--line-strong:#383a3d;--accent:#dd9a4a;--accent-soft:#352a19;--accent-ink:#eeb463;--teal:#54b5a7;--teal-soft:#16302c;--good:#54bd83;--good-soft:#14281c;--warn:#dd9a4a;--danger:#e07b6a;--danger-soft:#2c1713;--shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px -16px rgba(0,0,0,.7);}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+  font-size:17.5px;line-height:1.72;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+h1,h2,h3,h4{font-family:var(--serif);font-weight:600;line-height:1.18;text-wrap:balance;margin:0}
+p{margin:0 0 1.05em}
+a{color:var(--accent-ink);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--accent) 38%,transparent)}
+a:hover{border-bottom-color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+em{font-style:italic}
+strong{font-weight:650}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.dim{color:var(--muted)}
+.wrap{max-width:var(--read);margin:0 auto;padding:0 24px}
+.wide{max-width:1080px;margin:0 auto;padding:0 24px}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-ink);font-weight:600}
+
+header.top{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--ground) 90%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top .bar{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;align-items:center;gap:16px;height:54px}
+.brand{font-family:var(--mono);font-size:12px;letter-spacing:.05em;font-weight:600;white-space:nowrap}
+.brand b{color:var(--accent-ink)}
+nav.secs{display:flex;gap:2px;overflow-x:auto;flex:1;scrollbar-width:none}
+nav.secs::-webkit-scrollbar{display:none}
+nav.secs a{font-family:var(--mono);font-size:11.5px;color:var(--muted);padding:6px 9px;border-radius:6px;border-bottom:none;white-space:nowrap}
+nav.secs a:hover{color:var(--ink);background:var(--panel-2)}
+nav.secs a.active{color:var(--accent-ink);background:var(--accent-soft)}
+.themebtn{font-family:var(--mono);font-size:11px;background:var(--panel);border:1px solid var(--line-strong);color:var(--muted);border-radius:6px;padding:6px 9px;cursor:pointer}
+.themebtn:hover{color:var(--ink);border-color:var(--accent)}
+
+.hero{padding:70px 0 46px;border-bottom:1px solid var(--line);
+  background:radial-gradient(120% 80% at 85% -20%,var(--accent-soft) 0%,transparent 60%)}
+.hero h1{font-size:clamp(30px,5vw,50px);letter-spacing:-.015em;max-width:20ch}
+.hero .lede{font-size:clamp(18px,2.1vw,21px);color:var(--ink-soft);margin-top:22px}
+.hero .who{margin-top:22px;font-family:var(--mono);font-size:12px;color:var(--faint)}
+
+section{padding:56px 0;border-bottom:1px solid var(--line);scroll-margin-top:62px}
+.part-label{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:10px}
+h2.part{font-size:clamp(26px,3.6vw,38px);letter-spacing:-.015em;margin-bottom:6px}
+h3.sub{font-size:clamp(21px,2.6vw,26px);margin:44px 0 4px;letter-spacing:-.01em}
+h3.sub .n{font-family:var(--mono);font-size:15px;color:var(--accent);font-weight:600;margin-right:10px}
+h4.mini{font-size:18px;margin:26px 0 6px}
+.lead-in{color:var(--ink-soft);font-size:19px;margin:12px 0 8px}
+
+.box{border-radius:12px;padding:18px 22px;margin:22px 0;border:1px solid var(--line);background:var(--panel);box-shadow:var(--shadow)}
+.box .bt{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.box.def{border-left:4px solid var(--teal)} .box.def .bt{color:var(--teal)}
+.box.take{border-left:4px solid var(--accent);background:var(--accent-soft)} .box.take .bt{color:var(--accent-ink)}
+.box.work{border-left:4px solid var(--muted);background:var(--panel-2)} .box.work .bt{color:var(--muted)}
+.box.warn{border-left:4px solid var(--danger);background:var(--danger-soft)} .box.warn .bt{color:var(--danger)}
+.box.good{border-left:4px solid var(--good);background:var(--good-soft)} .box.good .bt{color:var(--good)}
+.box p:last-child{margin-bottom:0}
+.box .term{font-family:var(--serif);font-weight:600;font-style:italic}
+
+.verdict{border:1px solid var(--accent);border-left:6px solid var(--accent);border-radius:14px;background:linear-gradient(135deg,var(--accent-soft),var(--panel) 72%);
+  padding:24px 26px;margin:26px 0;box-shadow:var(--shadow)}
+.verdict .vt{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-ink);font-weight:700;margin-bottom:10px}
+.verdict h4{font-size:22px;margin:0 0 10px}
+.verdict p:last-child{margin-bottom:0}
+
+.eq{font-family:var(--serif);font-style:italic;font-size:19px;text-align:center;background:var(--panel-2);
+  border:1px solid var(--line);border-radius:10px;padding:20px 46px 20px 22px;margin:20px 0;position:relative;overflow-x:auto;line-height:2}
+.eq .en{position:absolute;right:14px;top:10px;font-family:var(--mono);font-style:normal;font-size:11px;color:var(--faint)}
+.eq .where{display:block;font-family:var(--sans);font-style:normal;font-size:13.5px;color:var(--muted);margin-top:12px;line-height:1.6;text-align:left}
+.m{font-family:var(--serif);font-style:italic}
+.frac{display:inline-flex;flex-direction:column;text-align:center;vertical-align:middle;margin:0 .18em;font-size:.92em}
+.frac>span:first-child{border-bottom:1.2px solid currentColor;padding:0 .4em;line-height:1.35}
+.frac>span:last-child{padding:0 .4em;line-height:1.35}
+sub{font-size:.72em} sup.p{font-size:.72em}
+
+pre.code{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.6;margin:18px 0;color:var(--ink-soft)}
+pre.code .c{color:var(--faint)}
+pre.code .k{color:var(--accent-ink)}
+code.inl{font-family:var(--mono);font-size:.86em;background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);margin:20px 0;background:var(--panel)}
+table.led{width:100%;border-collapse:collapse;font-size:15px;min-width:620px}
+table.led th{font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;text-align:left;color:var(--muted);padding:12px 16px;border-bottom:1px solid var(--line-strong);font-weight:600}
+table.led td{padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+table.led tr:last-child td{border-bottom:none}
+table.led td:first-child{font-weight:600}
+.yes{color:var(--good);font-weight:700}.no{color:var(--danger);font-weight:700}.mid{color:var(--warn);font-weight:700}
+.tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.tag.v{color:var(--good);background:var(--good-soft)} .tag.s{color:var(--warn);background:var(--accent-soft)} .tag.h{color:var(--danger);background:var(--danger-soft)}
+
+ul.clean{list-style:none;padding:0;margin:14px 0}
+ul.clean li{display:grid;grid-template-columns:24px 1fr;gap:10px;margin-bottom:12px;align-items:start}
+ul.clean li .ic{font-family:var(--mono);font-weight:700;margin-top:1px}
+ul.clean.ok li .ic{color:var(--good)}ul.clean.no li .ic{color:var(--danger)}ul.clean.step li .ic{color:var(--accent-ink)}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+
+.pipe{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;margin:20px 0;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+.pipe .st{flex:1;min-width:150px;padding:14px 16px;background:var(--panel);border-right:1px solid var(--line)}
+.pipe .st:last-child{border-right:none}
+.pipe .st .sn{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink);font-weight:700}
+.pipe .st .sd{font-size:13.5px;color:var(--ink-soft);margin-top:4px}
+
+.phase{display:grid;grid-template-columns:120px 1fr;gap:18px;padding:15px 0;border-bottom:1px solid var(--line)}
+.phase:last-child{border-bottom:none}
+.phase .pw{font-family:var(--mono);font-size:12.5px;color:var(--accent-ink);font-weight:600}
+
+.refs{font-size:13.5px;color:var(--muted)}
+.refs p{margin:0 0 8px}.refs a{font-family:var(--mono);font-size:12px}
+.foot{padding:36px 0 72px;color:var(--faint);font-size:12.5px;font-family:var(--mono)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+html{scroll-behavior:smooth}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="bar">
+    <span class="brand">STUDY&nbsp;NOTES <b>/</b> AgentTorch</span>
+    <nav class="secs" id="nav">
+      <a href="#orient">Orientation</a>
+      <a href="#built">What they built</a>
+      <a href="#works">How it works</a>
+      <a href="#msg">Message passing</a>
+      <a href="#llm">The LLM</a>
+      <a href="#diff">Differentiability</a>
+      <a href="#calib">Calibration &amp; sensitivity</a>
+      <a href="#cf">Counterfactuals</a>
+      <a href="#fund">For your fund</a>
+      <a href="#extend">Extend it</a>
+      <a href="#ledger">Honesty ledger</a>
+    </nav>
+    <button class="themebtn" id="themebtn" aria-label="Toggle theme">◐</button>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Read top-to-bottom · define-then-use · everything explained</div>
+    <h1>AgentTorch, taken apart to the last gear</h1>
+    <p class="lede">A ground-up tour of the million-agent simulator — what its authors actually built and showed, then <em>physically</em> how a run works: message passing, the LLM's real job, how a coin-flip can carry a gradient, what "sensitivity" literally reads off, and how you'd bend all of it toward the economic-link-spillover fund idea. Written from the source code, not the marketing.</p>
+    <p class="who">Built for Daniel · companion to <span class="mono">sim-alpha.html</span> · source read from github.com/AgentTorch/AgentTorch @ clone Sep 2026</p>
+  </div>
+</div>
+
+<!-- ============================ ORIENTATION ============================ -->
+<section id="orient">
+  <div class="wrap">
+    <div class="part-label">Part 0 · Orientation</div>
+    <h2 class="part">What this thing even is</h2>
+    <p class="lead-in">Before any code: one honest paragraph on what AgentTorch is, who made it, and the single mental model that makes everything else click.</p>
+
+    <div class="box def">
+      <div class="bt">▸ Definition — Agent-based model (ABM)</div>
+      <p>An <span class="term">agent-based model</span> is a simulation where you give many individual "agents" simple rules ("if a sick neighbour visits, I might catch it"; "if my wage falls, I spend less"), let them interact over time, and watch what emerges at the population level — an epidemic curve, a recession, a market panic. The behaviour of the <em>whole</em> is never written down directly; it <em>emerges</em> from millions of small local rules.</p>
+    </div>
+
+    <div class="box def">
+      <div class="bt">▸ Definition — Large Population Model (LPM)</div>
+      <p>AgentTorch's authors brand their flavour of ABM as a <span class="term">Large Population Model</span>. The readme's own line: <em>"While LLMs build digital humans, LPMs build digital societies."</em> The pitch is that an LLM captures one person's reasoning, but an LPM captures the <em>ripple effects of millions of interacting decisions</em> — the collective-scale dynamics an LLM alone can't represent.</p>
+    </div>
+
+    <p>AgentTorch is an open-source Python framework (AGPL-3.0, © Ayush Chopra, MIT Media Lab) for building these LPMs. Its four stated design principles — verbatim from the readme, paraphrased in plain English:</p>
+
+    <ul class="clean ok">
+      <li><span class="ic">1</span><b>Scalability.</b> Simulate very large populations (their headline demo is <b>8.4 million</b> synthetic New Yorkers) in seconds, by running everything as batched tensor math on a GPU.</li>
+      <li><span class="ic">2</span><b>Differentiability.</b> You can take the derivative <em>through</em> the whole simulation — even though it's full of random events and if-then rules — so you can tune it with gradient descent, the same way a neural network is trained.</li>
+      <li><span class="ic">3</span><b>Composition.</b> The simulation can be wired together with neural nets. An <b>LLM</b> can supply agent behaviour; a small <b>neural net</b> can supply the simulation's parameters. This is the hook we care about.</li>
+      <li><span class="ic">4</span><b>Generalization.</b> Same machinery is meant to run humans-in-cities, cells-in-tissue, or avatars-in-games.</li>
+    </ul>
+
+    <div class="verdict">
+      <div class="vt">The one mental model to hold</div>
+      <h4>AgentTorch is PyTorch, but the "network" is a world.</h4>
+      <p>A neural net is a stack of differentiable layers; you press <span class="mono">forward()</span>, get an output, compute a loss, press <span class="mono">backward()</span>, and the gradients tell you how to nudge every weight. AgentTorch makes the <em>rules of a world</em> — contagion, spending, predation — into those differentiable layers. Press <span class="mono">forward()</span> and the world steps through time. Compute a loss on the outcome (e.g. "simulated cases minus real cases"). Press <span class="mono">backward()</span> and the gradients tell you how to nudge every <em>rule-parameter</em> (transmission rate, mortality, spending propensity). <strong>That single idea is the whole framework. Everything below is plumbing that keeps this true even where a normal simulation would break the gradient.</strong></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ WHAT THEY BUILT ============================ -->
+<section id="built">
+  <div class="wrap">
+    <div class="part-label">Part 1 · The evidence</div>
+    <h2 class="part">What they actually built &amp; showed</h2>
+    <p class="lead-in">The repo ships three worked models. Here is what each one <em>demonstrates</em> — the claim it's proof of — and <em>how</em> it does it. This is the "is the idea real?" evidence, so I'm careful to separate what the code plainly does from what the associated papers claim.</p>
+
+    <h3 class="sub"><span class="n">1.1</span>COVID — the flagship: 8.4M agents, LLM behaviour, gradient calibration</h3>
+    <p>File tour: <code class="inl">models/covid/</code> — <code class="inl">model_card.md</code>, <code class="inl">substeps/new_transmission/</code>, <code class="inl">calibration/calibnn.py</code>.</p>
+    <p><b>What it shows.</b> That you can stand up a full city (8.4M synthetic NYC residents, ages + a mobility contact network), run an <b>SEIRM</b> disease process (Susceptible → Exposed → Infected → Recovered → Mortality), let agents make an <em>adaptive behavioural choice</em> ("will I isolate today?") that can be driven by an LLM, and then <b>calibrate</b> the disease parameters (like R0, initialised to 4.75 in the card) to real case data by gradient descent — the differentiability principle, made concrete on a population the size of a real city.</p>
+    <p><b>How it works, mechanically.</b> Each simulated day runs two substeps: <em>Transmission</em> then <em>Disease Progression</em>. In Transmission, the contact network decides who is exposed to whom (message passing — §2.2), the per-agent isolation decision damps their contacts, a random draw decides who actually gets infected, and stages advance. Because every one of those steps is written in a differentiable way, a loss on "daily infected vs. real data" flows all the way back to the transmission rate.</p>
+    <div class="box work">
+      <div class="bt">▸ Honesty note</div>
+      <p>The <em>code</em> plainly implements the population, the SEIRM dynamics, the LLM-isolation hook, and the calibration machinery (learnable <code class="inl">R0</code>/mortality, an Adam loop, a <code class="inl">CalibNN</code> net with hard parameter bounds). The stronger claim — "it reproduced real NYC COVID waves and beat baselines" — belongs to the associated papers (Chopra et al., differentiable agent-based epidemiology), which I'm citing from memory, not re-verifying here. Treat "it fit real data well" as <span class="tag s">my recollection</span> until you read the paper.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">1.2</span>Macro-economics — LLM consumers inside a differentiable economy</h3>
+    <p>File tour: <code class="inl">models/macro_economics/</code> — <code class="inl">simulator.py</code>, <code class="inl">substeps/{earning,consumption,labor_market,financial_market}</code>, <code class="inl">calibnn.py</code>.</p>
+    <p><b>What it shows.</b> A tiny economy where agents <em>earn</em> and <em>spend</em>, a <b>labour market</b> updates unemployment, and a <b>financial market ("FED")</b> updates interest rates and taxes — with the agents' work-and-consumption decisions optionally driven by an LLM. The differentiable payoff is explicit in the source: after running an episode it computes <code class="inl">loss = unemployment_rate.sum()</code>, calls <code class="inl">loss.backward()</code>, prints <code class="inl">p.grad</code> for every parameter, and steps an Adam optimizer (<code class="inl">simulator.py</code> lines ~102–115). So the demo <em>is</em> "differentiate the unemployment rate with respect to the economy's parameters and optimize."</p>
+    <p><b>Why it matters for you.</b> This is the closest shipped analogue to a market: heterogeneous agents, a price/rate-setting market layer, LLM-driven demand, and a gradient from a macro outcome back to behavioural parameters. It's the template you'd mutate.</p>
+
+    <h3 class="sub"><span class="n">1.3</span>Predator–prey — the pure "scale &amp; correctness" demo</h3>
+    <p>File tour: <code class="inl">models/predator_prey/</code> — <code class="inl">vmap_simulation.py</code>, <code class="inl">substeps/</code>.</p>
+    <p><b>What it shows.</b> No LLM. It's the classic ecology ABM — predators, prey, and regrowing grass on a grid, each with an <em>energy</em> level; things eat, move, reproduce, and die. Its job is to prove the <b>vectorized runner</b> reproduces textbook predator–prey population oscillations while scaling, and to serve as the framework's teaching example (there's a whole tutorial on "vectorizing" it). It's your reference for "how do I write a model that <em>isn't</em> disease" and how the <code class="inl">observe→act→progress</code> substep pattern feels on a fresh domain.</p>
+
+    <div class="box warn">
+      <div class="bt">▸ What is <em>not</em> in this repo</div>
+      <p>The readme advertises "cells in anatomical worlds" (neural cellular automata) and other domains, but the shipped <code class="inl">models/</code> folder contains only <b>covid, macro_economics, predator_prey</b>. Some example scripts reference boids/movement models too. If a demo isn't in <code class="inl">models/</code> or <code class="inl">examples/</code>, treat it as a paper/website claim, not runnable code you have.</p>
+    </div>
+
+    <div class="tblwrap">
+      <table class="led">
+        <thead><tr><th>Model</th><th>Uses an LLM?</th><th>Differentiable / calibrated?</th><th>The claim it is evidence for</th></tr></thead>
+        <tbody>
+          <tr><td>COVID (8.4M)</td><td class="yes">Yes — isolation decisions</td><td class="yes">Yes — R0/mortality via Adam + CalibNN</td><td>City-scale + LLM behaviour + fit to real data can coexist</td></tr>
+          <tr><td>Macro-economics</td><td class="yes">Yes — work/consumption</td><td class="yes">Yes — ∂(unemployment)/∂params</td><td>An economy's outcome can be differentiated back to behaviour</td></tr>
+          <tr><td>Predator–prey</td><td class="no">No</td><td class="mid">Vectorized; calibration optional</td><td>The engine scales &amp; reproduces known dynamics</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ HOW IT WORKS ============================ -->
+<section id="works">
+  <div class="wrap">
+    <div class="part-label">Part 2 · The machinery</div>
+    <h2 class="part">How a run physically works</h2>
+    <p class="lead-in">Now the gears. Four things to understand in order: (a) the world is just tensors, (b) time advances by a three-phase loop, (c) agents interact by <em>message passing</em>, (d) the LLM plugs into exactly one phase.</p>
+
+    <h3 class="sub"><span class="n">2.1</span>The world is a nested dictionary of tensors</h3>
+    <p>There is <b>no</b> <code class="inl">Agent</code> object per person. That's the key surprise. The entire population lives in one big <b>state dict</b> of PyTorch tensors. Agent number 4,000,000 is simply <em>row 4,000,000</em> of each tensor:</p>
+    <pre class="code">state = {
+  <span class="k">"agents"</span>: {
+     <span class="k">"citizens"</span>: {
+        <span class="k">"disease_stage"</span>: tensor(shape=[8_400_000, 1]),  <span class="c"># 0=S,1=E,2=I,3=R,4=M</span>
+        <span class="k">"age"</span>:           tensor(shape=[8_400_000, 1]),
+        <span class="k">"infected_time"</span>: tensor(shape=[8_400_000, 1]),
+     }
+  },
+  <span class="k">"environment"</span>: { <span class="k">"daily_infected"</span>: tensor(...), <span class="k">"R2"</span>: tensor(...) },
+  <span class="k">"network"</span>:     { <span class="c"># the contact graph: an edge list (who meets whom)</span> },
+}</pre>
+    <div class="box take">
+      <div class="bt">▸ Why this is the whole scaling trick</div>
+      <p>Updating 8.4M agents is <em>not</em> a Python loop over 8.4M people (that would take minutes per step). It's <b>one</b> tensor operation — <code class="inl">new_stage = stage + newly_infected</code> — that the GPU applies to all 8.4M rows at once, in parallel. "Millions of agents" = "tall tensors + one vectorized op." That is the entire performance story; the rest of the framework is about keeping that world <em>differentiable</em>.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">2.2</span>Time advances by a three-phase substep loop</h3>
+    <p>The <code class="inl">Runner</code> (itself a PyTorch <code class="inl">nn.Module</code>) walks time. One simulation "tick" (e.g. a day) is broken into <b>substeps</b> (Transmission, Progression, …) that you list in a YAML config. Each substep runs three phases, executed by the <code class="inl">Controller</code> (<code class="inl">core/controller.py</code>):</p>
+    <div class="pipe">
+      <div class="st"><div class="sn">1 · Observe</div><div class="sd"><b>SubstepObservation</b> — slice out only the state tensors this rule needs (e.g. each agent's stage &amp; age).</div></div>
+      <div class="st"><div class="sn">2 · Act / Policy</div><div class="sd"><b>SubstepAction</b> — decide each agent's action (e.g. "isolate: yes/no"). <span style="color:var(--accent-ink)">The LLM plugs in here.</span></div></div>
+      <div class="st"><div class="sn">3 · Progress / Transition</div><div class="sd"><b>SubstepTransition</b> — apply the deterministic dynamics: actions + network → the next state.</div></div>
+    </div>
+    <pre class="code"><span class="k">for</span> t <span class="k">in</span> range(num_steps):            <span class="c"># each day</span>
+    <span class="k">for</span> substep <span class="k">in</span> substeps:          <span class="c"># Transmission, then Progression</span>
+        obs   = controller.observe(state)          <span class="c"># phase 1</span>
+        act   = controller.act(state, obs)         <span class="c"># phase 2  ← LLM here</span>
+        state = controller.progress(state, act)    <span class="c"># phase 3  → next state</span>
+        trajectory.append(snapshot(state))         <span class="c"># recorded history you analyse later</span></pre>
+    <p>That's it — the "algorithm of a run" is this triple-nested loop (timesteps × substeps × three phases), where every phase is a batched tensor op over the whole population. The recorded <code class="inl">trajectory</code> is what you compute losses and statistics on afterwards.</p>
+  </div>
+</section>
+
+<!-- ============================ MESSAGE PASSING ============================ -->
+<section id="msg">
+  <div class="wrap">
+    <div class="part-label">Part 2.3 · The part you asked about</div>
+    <h2 class="part">How message passing actually works</h2>
+    <p class="lead-in">"Agent-to-agent interaction via graph message passing" is the phrase you flagged. Here is the literal mechanism, with a worked 3-agent example. This is also the single most important section for your fund idea, because a supply chain <em>is</em> a message-passing graph.</p>
+
+    <div class="box def">
+      <div class="bt">▸ Definition — a graph, an edge list, message passing</div>
+      <p>A <span class="term">graph</span> is dots (nodes) joined by lines (edges). Here each <b>node</b> = one agent; each <b>edge</b> = "these two are in contact." The graph is stored as an <span class="term">edge list</span>: a 2-row tensor where column <em>k</em> says "edge <em>k</em> goes from node <span class="mono">edge[0,k]</span> to node <span class="mono">edge[1,k]</span>." <span class="term">Message passing</span> is a 3-step recipe that lets every node update itself using its neighbours — and crucially it runs as one vectorized op over <em>all edges at once</em>, not a loop over nodes.</p>
+    </div>
+
+    <p>AgentTorch inherits this from <b>PyTorch Geometric</b>'s <code class="inl">MessagePassing</code> class. The COVID transmission substep (<code class="inl">new_transmission/transition.py</code>) subclasses it and calls <code class="inl">self.propagate(edge_index, x, ...)</code>. <code class="inl">propagate</code> orchestrates exactly three steps:</p>
+
+    <div class="phase"><div class="pw">① message()</div><div>For <b>every edge j→i at once</b>, compute the "message" flowing from source neighbour <em>j</em> to target <em>i</em>. In COVID this is the <b>infection pressure</b> agent <em>j</em> puts on agent <em>i</em>: a product of <em>i</em>'s susceptibility, <em>j</em>'s infectiousness, the edge's contact weight, and a time-since-infection factor. Non-infected <em>j</em> contribute zero. This is the method <code class="inl">message()</code> in the file (it calls <code class="inl">_lam(...)</code>).</div></div>
+    <div class="phase"><div class="pw">② aggregate()</div><div>For each target node <em>i</em>, <b>sum</b> all incoming messages. The class was constructed with <code class="inl">aggr="add"</code>, so node <em>i</em> ends up with its <em>total</em> infection pressure = sum over all its infected contacts. PyG does this sum in one scattered tensor op.</div></div>
+    <div class="phase"><div class="pw">③ update()</div><div>Turn the aggregated pressure into the node's new value. Here it's essentially the identity — the summed pressure <em>is</em> the per-agent transmission intensity, called <code class="inl">new_transmission</code>.</div></div>
+
+    <div class="box work">
+      <div class="bt">▸ Worked example — 3 agents, one infected</div>
+      <p>Agent <b>i</b> (susceptible) has two contacts: <b>j₁</b> (infected) and <b>j₂</b> (healthy). Edge list has two columns pointing at i.</p>
+      <p><b>① message:</b> from j₁ → i, pressure = R · susc<sub>i</sub> · infect<sub>j₁</sub> · weight · γ ≈ <b>0.30</b>. From j₂ → i, j₂ isn't infected so pressure = <b>0</b>.<br>
+      <b>② aggregate:</b> total pressure on i = 0.30 + 0 = <b>0.30</b>.<br>
+      <b>③ update →</b> then the substep converts pressure to a probability:</p>
+      <div class="eq">P(<span class="m">i</span> stays uninfected) = e<sup class="p">−0.30</sup> = 0.741 &nbsp;⟹&nbsp; P(infected) = 1 − 0.741 = <b>0.259</b><span class="en">exp-dose</span></div>
+      <p>Then a random draw with probability 0.259 decides whether i actually flips to Exposed today (that draw is the <em>StraightThroughBernoulli</em> of §3 — the thing that keeps the gradient alive). Multiply by "am I isolating?" (the LLM's output) to damp it.</p>
+    </div>
+
+    <div class="verdict">
+      <div class="vt">Direct mapping to your fund</div>
+      <h4>A supply chain is this exact object.</h4>
+      <p>Swap the labels: <b>node</b> = a firm; <b>edge</b> = "firm A supplies / is a customer of / competes with firm B" (with an edge weight = strength of the link); <b>message</b> = an economic shock (an input-cost spike, a demand cut, an earnings surprise) propagating along that edge; <b>aggregate</b> = a firm's total exposure summed over all its links; <b>multi-hop</b> = run the message pass twice and the shock reaches suppliers-of-suppliers. The COVID transmission code is, structurally, a shock-propagation engine. That's why AgentTorch is relevant to you at all — not the epidemiology, the <em>graph diffusion machinery</em>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ THE LLM ============================ -->
+<section id="llm">
+  <div class="wrap">
+    <div class="part-label">Part 2.4 · The LLM's real job</div>
+    <h2 class="part">What the LLM does — and why it's allowed near probabilities</h2>
+    <p class="lead-in">Your sharpest question: "LLMs are bad at predicting probabilities, so why let them decide probability?" The honest answer is that in a well-built AgentTorch model <em>they don't</em>. Let's see exactly what the LLM returns and where it sits.</p>
+
+    <h3 class="sub"><span class="n">2.4.1</span>The archetype trick: tens of calls, not millions</h3>
+    <p>The naïve fear is 8.4M GPT calls per step. That is not what happens (<code class="inl">core/llm/behavior.py</code>, <code class="inl">prompt_manager.py</code>):</p>
+    <ul class="clean step">
+      <li><span class="ic">1</span>Your prompt is a <b>template with slots</b>: <em>"You are {age} in {region}. Cases are {change} this week. Will you isolate today? Answer 0–1."</em></li>
+      <li><span class="ic">2</span>The <code class="inl">PromptManager</code> takes the <b>Cartesian product</b> of the slot categories (<code class="inl">itertools.product</code>). 7 ages × 5 regions = <b>35 distinct groups</b> → <b>35 prompts</b> → 35 LLM calls. Not 8.4M.</li>
+      <li><span class="ic">3</span>Calls fire in parallel (a thread pool over the group prompts; backends include DSPy/OpenAI, and a <code class="inl">MockLLM</code> for free local dev).</li>
+      <li><span class="ic">4</span>Each answer is parsed to a <b>number</b> (<code class="inl">value = float(text)</code>), then <b>broadcast</b> back onto every agent in that group via a boolean mask tensor — one scatter op puts the 35 answers onto all 8.4M rows.</li>
+      <li><span class="ic">5</span><code class="inl">n_arch</code> = how many independent "persona samples" you draw per group; their numbers are <b>averaged</b>, giving a distribution rather than one point.</li>
+    </ul>
+    <div class="box def">
+      <div class="bt">▸ Definition — archetype</div>
+      <p>An <span class="term">archetype</span> is a behavioural persona shared by everyone with the same slot values. It's the compression that makes LLM-in-the-loop affordable: reason once per <em>type</em> of person, broadcast to all instances. This is the "adaptive behaviour / Lucas-critique" idea from your other doc, in code.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">2.4.2</span>Where the LLM sits — and where it does <em>not</em></h3>
+    <p>Trace the COVID isolation action (<code class="inl">new_transmission/action.py</code>): the LLM's number becomes <code class="inl">will_isolate</code>, a per-agent tensor, returned as the action. In the transition it multiplies contact intensity: <code class="inl">exposed = bernoulli(prob) · (1 − will_isolate)</code>. So the LLM sets a <b>behavioural propensity</b> that <em>modulates</em> a mechanism whose hard numbers come from elsewhere.</p>
+    <div class="box warn">
+      <div class="bt">▸ Two facts that resolve your objection</div>
+      <p><b>(a) The LLM is outside the gradient.</b> Its text output is turned into a plain <code class="inl">float</code> — that <code class="inl">float()</code> cast severs any connection to the LLM's weights. Gradients flow through the <em>mechanistic</em> parameters (transmission rate, mortality), <b>not</b> back into the language model. The LLM is a behaviour <em>oracle</em>, not a trained layer.</p>
+      <p><b>(b) The LLM supplies <em>direction &amp; structure</em>; the data supplies <em>magnitude</em>.</b> You should not ask the LLM "what is the probability of infection" (it <em>is</em> badly calibrated at that). You ask it the thing it's good at: <em>"holding all else equal, does this persona isolate MORE or LESS when cases jump?"</em> — a qualitative, conditional behavioural response. The actual numeric strength (how much a unit of "isolation propensity" reduces transmission) is a <b>learnable parameter calibrated to real data by gradient descent</b>. The LLM never gets to set a probability that matters quantitatively; it sets the <em>shape</em> of the response and lets the differentiable sim fit the <em>size</em>.</p>
+    </div>
+    <div class="verdict">
+      <div class="vt">The reusable principle for your fund</div>
+      <h4>Let the LLM build the graph and pick the sign; let gradient descent set the coefficients.</h4>
+      <p>Don't ask an LLM "what's the probability GM's stock drops 3%." Ask it the two things it's genuinely good at: <b>(1) structure</b> — "read this 10-K; which suppliers does firm X depend on, for which input?" (graph construction) — and <b>(2) direction</b> — "if that input's cost spikes, does a thin-margin downstream firm cut output or raise price?" Then a differentiable propagation model, calibrated to historical returns, decides the magnitudes. This is precisely the split your <span class="mono">sim-alpha.html</span> verdict already argues for; AgentTorch is one concrete way to implement the second half.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ DIFFERENTIABILITY ============================ -->
+<section id="diff">
+  <div class="wrap">
+    <div class="part-label">Part 3 · The magic trick, from scratch</div>
+    <h2 class="part">How a coin-flip carries a gradient</h2>
+    <p class="lead-in">This is the section you said you don't get at all. We'll build it from the very bottom: what a gradient is, why simulations normally destroy it, and the three specific tricks the code uses to save it.</p>
+
+    <div class="box def">
+      <div class="bt">▸ Plain-English on-ramp — what is a gradient?</div>
+      <p>A <span class="term">gradient</span> (derivative) answers one question: <em>"if I nudge this input up a tiny bit, how much does the output change, and in which direction?"</em> If output = 3·x, the gradient is 3 ("each unit of x adds 3 to output"). PyTorch computes these automatically for any chain of smooth operations — that's <span class="term">autograd</span> / <span class="term">backpropagation</span>. Training = repeatedly reading the gradient and stepping the inputs the direction that lowers a "loss." <b>No gradient ⟹ no gradient-descent training.</b></p>
+    </div>
+
+    <div class="box warn">
+      <div class="bt">▸ The problem — simulations are full of gradient-killers</div>
+      <p>Two operations appear everywhere in a simulation and both have a <b>zero-or-undefined</b> derivative, which snaps the chain:</p>
+      <p><b>(1) A random 0/1 event.</b> "Did agent i get infected?" is a coin flip — <code class="inl">torch.bernoulli(p)</code> outputs exactly 0 or 1. Nudge <em>p</em> a hair and the output usually doesn't move at all (still 0), then suddenly jumps. Derivative is 0 almost everywhere. So the gradient can't travel from "number infected" back to the transmission rate <em>p</em> depends on.</p>
+      <p><b>(2) A comparison / if-statement.</b> "Is energy &gt; 0?" → <code class="inl">(a &gt; b)</code> is a step: flat 0, then flat 1. Derivative 0 everywhere except an infinite spike at the edge. Same breakage.</p>
+      <p>If you leave these as-is, <code class="inl">loss.backward()</code> returns zeros and calibration is impossible. AgentTorch's whole "differentiability" claim rests on <em>replacing</em> these with look-alikes that have a usable gradient.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">3.1</span>Trick 1 — the Straight-Through estimator (the Bernoulli)</h3>
+    <p>Here is the actual code from <code class="inl">core/distributions/distributions.py</code> — it's tiny:</p>
+    <pre class="code"><span class="k">class</span> StraightThroughBernoulli(torch.autograd.Function):
+    <span class="k">@staticmethod</span>
+    <span class="k">def</span> forward(ctx, p):
+        result = torch.bernoulli(p)      <span class="c"># a REAL coin flip → hard 0 or 1</span>
+        ctx.save_for_backward(result, p)
+        <span class="k">return</span> result
+    <span class="k">@staticmethod</span>
+    <span class="k">def</span> backward(ctx, grad_output):
+        result, p = ctx.saved_tensors
+        <span class="k">return</span> grad_output * torch.ones(result.shape)   <span class="c"># pretend d(sample)/d(p) = 1</span></pre>
+    <div class="box def">
+      <div class="bt">▸ What "straight-through" means, unpacked</div>
+      <p>A PyTorch <code class="inl">autograd.Function</code> lets you write the <b>forward</b> pass and the <b>backward</b> pass by hand, independently. Here they deliberately <em>lie</em> to each other, productively:</p>
+      <p><b>Forward:</b> do the honest thing — flip a real coin, output a hard 0 or 1. The simulation stays realistic (an agent is either infected or not; no fractional people).</p>
+      <p><b>Backward:</b> the true derivative of a coin flip is 0/undefined, which would kill training. So instead they <em>pass the incoming gradient straight through unchanged</em> (multiply by 1), <b>as if</b> the output had simply been <em>p</em> itself (whose derivative w.r.t. <em>p</em> <em>is</em> 1). The gradient "walks through" the coin flip on a pretend-smooth bridge.</p>
+    </div>
+    <div class="box work">
+      <div class="bt">▸ Worked example — why this lets you calibrate R</div>
+      <p>Suppose transmission rate R feeds probability <em>p</em> = 0.259 (from §2.3), and the coin flip gives <b>0</b> (i infected: no). Total infections today is some sum of these flips; say <em>loss</em> = (infections − real_data)².</p>
+      <p><b>Forward</b> uses the hard 0 — infections is an honest integer.<br>
+      <b>Backward</b>: the straight-through rule says "treat that flip as if it were <em>p</em>," so ∂infections/∂p ≈ 1 per agent, and the chain continues: ∂loss/∂R = ∂loss/∂infections · ∂infections/∂p · ∂p/∂R. <b>Now R has a gradient</b>, so Adam can nudge R to make simulated infections match reality. Without the trick, ∂infections/∂p = 0 and R would never move. That's the entire point.</p>
+      <p><span class="tag h">Caveat</span> Straight-through is <b>biased</b> — it's an approximation, not the true gradient. The repo also ships fancier <em>unbiased</em> estimators (<code class="inl">Bernoulli</code>, <code class="inl">Binomial</code>, <code class="inl">Geometric</code>, <code class="inl">Categorical</code>) whose <code class="inl">backward</code> uses "stochastic-triple" weights like 1/p and 1/(1−p). Straight-through is the cheap default; the others trade cost for less bias.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">3.2</span>Trick 2 — Gumbel-softmax (for "pick one of several options")</h3>
+    <p>When the choice is categorical (buy A vs B vs C, not just yes/no), the same problem appears and the fix is <b>Gumbel-softmax</b> (<code class="inl">helpers/soft.py</code>, <code class="inl">discrete_sample</code> → <code class="inl">torch.nn.functional.gumbel_softmax(logits, tau=0.1, hard=True)</code>).</p>
+    <div class="box def">
+      <div class="bt">▸ How it works, plainly</div>
+      <p>To sample a category differentiably: add a specific kind of random noise (Gumbel noise) to the option scores, then take a <b>softmax</b> (a smooth, differentiable "soft argmax") with a <b>temperature</b> τ. Low τ (here 0.1) makes the softmax output almost a hard one-hot pick — so the forward pass looks like a real choice — while the softmax's smoothness gives a real gradient on the backward pass. <code class="inl">hard=True</code> adds a straight-through step so the forward value is <em>exactly</em> one-hot but the gradient still flows. It's the §3.1 idea generalised from a coin to a die.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">3.3</span>Trick 3 — soft logic (the <code class="inl">hard + soft − soft.detach()</code> line)</h3>
+    <p>This is the one-liner you quoted. It differentiably fakes comparisons and boolean logic (<code class="inl">helpers/soft.py</code>). Take <code class="inl">compare(a,b)</code> ≈ "is a &gt; b?":</p>
+    <pre class="code">hard = (a &gt; b).float()          <span class="c"># exact step: 0.0 or 1.0</span>
+soft = torch.sigmoid(k*(a - b)) <span class="c"># smooth S-curve version of the same question</span>
+result = hard + soft - soft.detach()</pre>
+    <div class="box def">
+      <div class="bt">▸ Why that line is genius (and what <code class="inl">.detach()</code> does)</div>
+      <p><code class="inl">.detach()</code> means "keep this number's <em>value</em> but cut it out of gradient bookkeeping — treat it as a frozen constant." Now read the line twice:</p>
+      <p><b>Forward (values):</b> <code class="inl">soft − soft.detach()</code> = soft − (same number) = <b>0</b>. So <code class="inl">result = hard</code>, exactly. The simulation sees a clean 0 or 1. No fuzziness leaks into the dynamics.</p>
+      <p><b>Backward (gradients):</b> <code class="inl">hard</code> has gradient 0 (it's a step); <code class="inl">soft.detach()</code> has gradient 0 (frozen). The only term left with a live gradient is <code class="inl">soft</code> — the sigmoid — whose derivative is a nice smooth bump. So the gradient of <code class="inl">result</code> equals the gradient of the <em>soft</em> version. <b>You get a hard value forward and a smooth gradient backward, from one line.</b> The same pattern builds <code class="inl">min</code>, <code class="inl">max</code>, <code class="inl">and</code>, <code class="inl">or</code>, <code class="inl">not</code>.</p>
+    </div>
+    <div class="box take">
+      <div class="bt">▸ The section in one sentence</div>
+      <p>Every gradient-killing operation (random events, comparisons, choices) is swapped for a twin that <b>behaves exactly like the real thing on the way forward but hands back a smooth, usable gradient on the way back</b> — so the whole simulation becomes one long differentiable function you can train like a neural net.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ CALIBRATION & SENSITIVITY ============================ -->
+<section id="calib">
+  <div class="wrap">
+    <div class="part-label">Part 4 · Payoff</div>
+    <h2 class="part">Calibration &amp; sensitivity, made literal</h2>
+    <p class="lead-in">Now that the sim is differentiable, two things you asked about fall out almost for free. They're the same machine used two ways.</p>
+
+    <h3 class="sub"><span class="n">4.1</span>How a parameter becomes trainable</h3>
+    <p>In the YAML you mark an argument <code class="inl">learnable</code>. If calibration is on, the substep's constructor does (<code class="inl">core/substep.py</code>):</p>
+    <pre class="code">setattr(self, f<span class="k">"calibrate_{key}"</span>, torch.tensor(value, requires_grad=<span class="k">True</span>))</pre>
+    <p><code class="inl">requires_grad=True</code> is the switch that tells autograd "track this; I'll want ∂loss/∂(this) later." In COVID, the weekly transmission rate <code class="inl">R2</code> becomes such a tensor and is used as <code class="inl">R = (calibrate_R2 · week_onehot).sum()</code>.</p>
+
+    <h3 class="sub"><span class="n">4.2</span>Calibration = gradient descent to fit real data</h3>
+    <div class="box def">
+      <div class="bt">▸ Definition — calibration</div>
+      <p><span class="term">Calibration</span> = finding the parameter values that make the simulation reproduce reality. The <em>old</em> way is black-box search: guess parameters, run the whole sim, measure error, guess again — thousands of full re-runs, because you have no idea which way to move. The <em>differentiable</em> way: one run tells you, via the gradient, <b>exactly which direction lowers the error for every parameter simultaneously</b>. It becomes ordinary neural-net training.</p>
+    </div>
+    <p>The macro model's real loop (<code class="inl">macro_economics/simulator.py</code>, condensed):</p>
+    <pre class="code">optimizer = optim.Adam(runner.parameters(), lr=...)   <span class="c"># the calibrate_* tensors</span>
+runner.step(num_steps)                                 <span class="c"># run the whole economy</span>
+unemployment = runner.state_trajectory[-1][-1][<span class="k">"environment"</span>][<span class="k">"U"</span>]
+loss = unemployment.sum()          <span class="c"># (or MSE vs. real unemployment series)</span>
+loss.backward()                    <span class="c"># backprop THROUGH the whole simulation</span>
+optimizer.step()                   <span class="c"># nudge every parameter down its gradient</span></pre>
+    <p>Repeat over episodes and the parameters converge to values that reproduce the target series. Same pattern in COVID with case data.</p>
+
+    <h3 class="sub"><span class="n">4.3</span>Sensitivity = you literally read <code class="inl">.grad</code></h3>
+    <div class="box def">
+      <div class="bt">▸ Definition — sensitivity</div>
+      <p><span class="term">Sensitivity</span> = "how much does the outcome I care about move when I change this one knob?" Formally the derivative ∂(outcome)/∂(parameter). After a single <code class="inl">backward()</code>, PyTorch has stored exactly this in each parameter's <code class="inl">.grad</code> field. So:</p>
+    </div>
+    <pre class="code">total_infections = trajectory_infections.sum()
+total_infections.backward()
+print(runner...calibrate_R2.grad)   <span class="c"># = ∂(total infections)/∂R2</span>
+                                    <span class="c"># "each +1 unit of R2 ⟹ +N infections"</span></pre>
+    <div class="box work">
+      <div class="bt">▸ Why this is a superpower vs. the normal way</div>
+      <p>The brute-force way to get sensitivities is <b>finite differences</b>: bump R2, re-run the whole 8.4M-agent sim, see how infections changed; then bump mortality, re-run again; … one full re-run <em>per parameter</em>. With 50 parameters that's 50 city-scale simulations.</p>
+      <p>Autograd gives you <b>all 50 sensitivities from a single backward pass</b> — because backprop propagates the derivative to every parameter at once. Rank parameters by |grad| and you instantly know which levers actually move the outcome and which are noise. That "full sensitivity ranking, basically free" is the thing that makes differentiable simulation more than a gimmick.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">4.4</span>CalibNN — a neural net that <em>outputs</em> the parameters</h3>
+    <p><code class="inl">covid/calibration/calibnn.py</code> and the macro <code class="inl">calibnn.py</code> take this one step further. Instead of a fixed learnable <em>number</em> for R, a small neural net reads <b>features</b> (mobility, weather, week-of-year) and <em>predicts</em> the parameters, squashed into sensible bounds (the file hard-codes <code class="inl">MIN_VAL_PARAMS</code>/<code class="inl">MAX_VAL_PARAMS</code>, e.g. R0 ∈ [1.4, 6.0]).</p>
+    <div class="pipe">
+      <div class="st"><div class="sn">features</div><div class="sd">mobility, weather, week…</div></div>
+      <div class="st"><div class="sn">CalibNN</div><div class="sd">small neural net</div></div>
+      <div class="st"><div class="sn">params</div><div class="sd">R0, mortality (bounded)</div></div>
+      <div class="st"><div class="sn">the sim</div><div class="sd">runs → simulated cases</div></div>
+      <div class="st"><div class="sn">loss</div><div class="sd">vs real cases → backprop → trains CalibNN</div></div>
+    </div>
+    <p>Because the whole chain is differentiable, the gradient flows from real-data error, <em>through the entire simulation</em>, into the neural net's weights. The plumbing that injects externally-computed parameter tensors while preserving the gradient is <code class="inl">runner.step_from_params</code> / <code class="inl">_set_parameters</code>.</p>
+
+    <div class="box work">
+      <div class="bt">▸ And P3O — for the parts that truly can't be made smooth</div>
+      <p><code class="inl">optim/p3o.py</code> is a <b>policy-gradient</b> optimizer (the REINFORCE family — the estimator used in reinforcement learning when you can't differentiate a discrete choice). It's used for genuinely non-differentiable knobs, like <em>which prompt wording</em> to show the LLM. Instead of a true gradient, it nudges choices toward whatever <em>scored</em> better, using the log-probability of the choice weighted by the reward. Think of it as the fallback for the handful of decisions the §3 tricks can't smooth.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ COUNTERFACTUALS ============================ -->
+<section id="cf">
+  <div class="wrap">
+    <div class="part-label">Part 5 · The "what if" question</div>
+    <h2 class="part">Counterfactuals — why a simulator can answer them</h2>
+    <p class="lead-in">You saw questions like "what would have happened if…?" Here's why a mechanistic simulator can answer those, where a plain predictive model can't — and the honest limit.</p>
+
+    <div class="box def">
+      <div class="bt">▸ Definition — counterfactual</div>
+      <p>A <span class="term">counterfactual</span> is a question about a world that didn't happen: "what if we'd locked down a week earlier?", "what if oil had spiked 30%?" You can't look it up in data because it never occurred.</p>
+    </div>
+    <div class="grid2">
+      <div class="box warn" style="margin:0">
+        <div class="bt">▸ Why regression/ML struggles</div>
+        <p>A model trained to <em>predict</em> from correlations only knows the world as it was. Ask it about an intervention outside its data and it extrapolates blindly — it learned "these move together," not "this <em>causes</em> that." (This is the <em>Lucas critique</em>: relationships break when you change the policy.)</p>
+      </div>
+      <div class="box good" style="margin:0">
+        <div class="bt">▸ Why a simulator can</div>
+        <p>An ABM encodes the <em>mechanism</em>: change the input (lockdown date, oil price, an edge weight), press play, and the consequences propagate through the rules. You get a full alternate trajectory. You can even <b>optimize</b> the intervention by gradient descent — "find the lockdown timing that minimizes deaths subject to cost" — because the sim is differentiable.</p>
+      </div>
+    </div>
+    <p>Mechanically, a counterfactual is trivial to run: change a parameter tensor or an intervention flag in the config and call <code class="inl">runner.step()</code> again; diff the two trajectories. That's the entire "what if" engine.</p>
+    <div class="box warn">
+      <div class="bt">▸ The honest limit — say this out loud in any pitch</div>
+      <p>A counterfactual is only as trustworthy as the mechanism. If your rules or your calibrated coefficients are wrong, the alternate world is confident fiction. Simulators <b>don't</b> escape the "garbage-in" problem; they relocate it from "did I fit the past" to "is my mechanism right." For markets specifically, mechanism is exactly what's contested — so counterfactual market claims are a <em>hypothesis to be validated forward</em>, never a proof. (This is consistent with the tier-2/tier-3 "backtestability spectrum" already in your <span class="mono">sim-alpha.html</span>.)</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ FOR YOUR FUND ============================ -->
+<section id="fund">
+  <div class="wrap">
+    <div class="part-label">Part 6 · Application</div>
+    <h2 class="part">Using this for the AI-native hedge-fund idea</h2>
+    <p class="lead-in">The concrete question: which market phenomena does this machinery actually fit, what's the LLM honestly for, and what's the smallest experiment that would tell you if there's an edge. Then: what else, and how to extend.</p>
+
+    <h3 class="sub"><span class="n">6.1</span>The mapping you'd actually build</h3>
+    <div class="tblwrap">
+      <table class="led">
+        <thead><tr><th>AgentTorch (COVID)</th><th>Your fund version</th></tr></thead>
+        <tbody>
+          <tr><td>Node = person</td><td>Node = a public company</td></tr>
+          <tr><td>Edge = contact</td><td>Edge = economic link (supplier→customer, competitor, shared input, co-analyst)</td></tr>
+          <tr><td>Message = infection pressure</td><td>Message = an economic shock (input-cost jump, demand cut, guidance change)</td></tr>
+          <tr><td>Aggregate = total exposure</td><td>Aggregate = a firm's total exposure to the shock across all its links</td></tr>
+          <tr><td>2 substeps = 2 days</td><td>2 message-passes = shock reaching suppliers-of-suppliers (multi-hop)</td></tr>
+          <tr><td>Calibrate R to case data</td><td>Calibrate per-edge-type decay/strength to historical price &amp; fundamental responses</td></tr>
+          <tr><td>Sensitivity ∂infections/∂R</td><td>Sensitivity ∂(portfolio move)/∂(each link) → which links carry the signal</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sub"><span class="n">6.2</span>Which market scenarios fit — and which don't</h3>
+    <div class="grid2">
+      <div class="box good" style="margin:0">
+        <div class="bt">▸ Good fit</div>
+        <ul class="clean ok" style="margin:0">
+          <li><span class="ic">✓</span><b>Slow multi-hop diffusion</b>: a supplier's guidance cut rippling to customers &amp; their customers over weeks.</li>
+          <li><span class="ic">✓</span><b>Input-cost / commodity shocks</b> propagating down value chains.</li>
+          <li><span class="ic">✓</span><b>Scenario stress tests</b>: "oil +30% — who's exposed two hops out that the market hasn't repriced?"</li>
+          <li><span class="ic">✓</span><b>Low-attention names</b> where the link is non-obvious, so diffusion is slow (your thesis's core).</li>
+        </ul>
+      </div>
+      <div class="box warn" style="margin:0">
+        <div class="bt">▸ Bad fit</div>
+        <ul class="clean no" style="margin:0">
+          <li><span class="ic">✗</span><b>High-frequency / microstructure</b> — wrong timescale entirely.</li>
+          <li><span class="ic">✗</span><b>Efficient large-cap next-day</b> — repriced before your ripple arrives.</li>
+          <li><span class="ic">✗</span>Anything where you'd need the LLM to output a <b>calibrated probability</b> directly (§2.4).</li>
+          <li><span class="ic">✗</span>Regime bets with no historical analog — that's the tier-3 "gambling" zone from your other doc.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 class="sub"><span class="n">6.3</span>The simplest experiment that would actually tell you something</h3>
+    <div class="box def">
+      <div class="bt">▸ A leakage-proof mini-POC (fits your 4–8 week horizon)</div>
+      <ol style="margin:0;padding-left:20px">
+        <li><b>Pick one clean shock channel.</b> E.g. supplier issues a downward guidance revision on date <em>D</em>.</li>
+        <li><b>Build the graph from pre-D information only.</b> Use an <b>open-weight LLM with a fixed knowledge cutoff before D</b> to read pre-D filings and extract "firm X depends on supplier S for input I." This is the leakage guardrail — the model literally cannot know the future.</li>
+        <li><b>Propagate.</b> One or two message-passing hops with a single learnable decay coefficient. Output: predicted <em>sign &amp; size</em> of each linked firm's 4- and 8-week forward return.</li>
+        <li><b>Calibrate the decay</b> on a <em>disjoint, earlier</em> set of shocks; test on held-out later ones.</li>
+        <li><b>Compare against three baselines</b>: (a) the market itself, (b) a plain-LLM sentiment score on the same news, (c) the naïve Cohen–Frazzini customer→supplier trade.</li>
+        <li><b>Metric:</b> out-of-sample hit-rate / information ratio on the linked basket, with the LLM cutoff strictly before every event.</li>
+      </ol>
+    </div>
+    <div class="box take">
+      <div class="bt">▸ The unlock — you don't need the agent machinery for the POC</div>
+      <p>For a first spillover POC you can <b>skip the millions-of-LLM-agents part entirely</b>. The reusable 20% is: <b>a differentiable message-passing graph + gradient calibration</b>. That's a few hundred lines of plain PyTorch (or AgentTorch's <code class="inl">MessagePassing</code> substep + the <code class="inl">StraightThrough</code>/soft ops). The LLM's only job in v1 is <em>graph construction + sign</em>. Bringing in behavioural archetype-agents (à la macro model) is a v2 upgrade, not a prerequisite. Right-size the tool to the question.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">6.4</span>Is "what they did" already proof?</h3>
+    <p>Partly. It's proof of <em>capability</em> — that graph-diffusion + differentiable calibration + LLM-supplied structure scales and can fit real data in a hard domain (epidemics, macro). It is <b>not</b> proof of <em>market alpha</em>: markets are adversarial and near-efficient in a way epidemics aren't, and the counterfactual limit (§5) bites hardest exactly here. So: strong existence proof for the <em>architecture</em>; the <em>edge</em> is yours to demonstrate with the POC above. That distinction is the honest thing to tell an investor.</p>
+  </div>
+</section>
+
+<!-- ============================ EXTEND ============================ -->
+<section id="extend">
+  <div class="wrap">
+    <div class="part-label">Part 7 · Beyond the demos</div>
+    <h2 class="part">What else can be done &amp; how to extend it</h2>
+    <p class="lead-in">Concrete extension paths, cheapest-and-most-relevant first.</p>
+    <ul class="clean step">
+      <li><span class="ic">1</span><b>Multi-edge-type graph (a real GNN).</b> Give each link type (supplier, competitor, co-input, shared-analyst) its own learnable propagation weight. Calibrate all of them jointly; read sensitivities to learn <em>which link type</em> actually carries slow-diffusing information. This is the direct generalisation of the single-<code class="inl">R</code> COVID transmission.</li>
+      <li><span class="ic">2</span><b>CalibNN for firms.</b> A small net mapping firm features (size, margin, leverage, liquidity) → its response coefficient, instead of one global decay. Same trick COVID uses for R; lets the response depend on who the firm is.</li>
+      <li><span class="ic">3</span><b>Counterfactual/scenario engine as a product.</b> Even if alpha is uncertain, a differentiable "who's exposed if X shocks" tool is a legitimate <em>risk</em> deliverable — and you can gradient-optimize hedges against a scenario.</li>
+      <li><span class="ic">4</span><b>Behavioural archetype layer (v2).</b> Only once the graph edge works: add LLM-driven agent responses (management cutting capex, competitors repricing) the way the macro model adds consumers — to capture second-order behaviour the static graph misses.</li>
+      <li><span class="ic">5</span><b>Swap the LLM backend to open-weights.</b> The backend is abstracted (<code class="inl">core/llm/backend.py</code>: an abstract <code class="inl">LLMBackend</code>, plus DSPy and a MockLLM). Writing a Claude/open-weight backend is implementing one <code class="inl">prompt()</code> method — and open weights give you the auditable-cutoff property your leakage story needs.</li>
+    </ul>
+    <div class="box warn">
+      <div class="bt">▸ Practical friction to expect</div>
+      <p>The two shipped <code class="inl">trainer.py</code> files have <b>hard-coded absolute paths</b> (<code class="inl">/Users/shashankkumar/…</code>) and a stale import (<code class="inl">from AgentTorch.helpers</code>, the old package name — it's now <code class="inl">agent_torch</code>). Treat them as <em>reference</em>. The clean entry points are <code class="inl">agent_torch/examples/*.py</code> and <code class="inl">docs/tutorials/</code>. Start with <code class="inl">MockLLM</code> and a small population to watch the loop turn before spending a cent on API calls.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ LEDGER ============================ -->
+<section id="ledger">
+  <div class="wrap">
+    <div class="part-label">Part 8 · Trust boundary</div>
+    <h2 class="part">Honesty ledger — what's verified vs. mine</h2>
+    <p class="lead-in">Because you (rightly) care about separating fact from synthesis, here's the boundary for this document.</p>
+    <div class="tblwrap">
+      <table class="led">
+        <thead><tr><th>Claim</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>The observe→act→progress loop; state-as-tensors; message passing via PyG <code class="inl">MessagePassing</code>; the archetype/broadcast LLM path; <code class="inl">StraightThroughBernoulli</code>, gumbel-softmax, <code class="inl">hard+soft−soft.detach()</code>; learnable <code class="inl">calibrate_*</code>; the Adam+backward loops; CalibNN with bounds; P3O; the three shipped models</td><td><span class="tag v">Verified — read in the cloned source</span></td></tr>
+          <tr><td>The exact numbers in the worked examples (0.30 pressure, p=0.259)</td><td><span class="tag s">Illustrative — my invented values to show the mechanism, not from a real run</span></td></tr>
+          <tr><td>"COVID model reproduced real NYC waves / beat baselines"; specific published results</td><td><span class="tag s">My recollection of the papers — not re-verified here; check Chopra et al. before quoting</span></td></tr>
+          <tr><td>The entire fund mapping, scenario fit, POC design, extension paths</td><td><span class="tag h">My synthesis / hypothesis — reasoned from the architecture, unproven for markets</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="dim" style="margin-top:20px">Source: github.com/AgentTorch/AgentTorch, shallow clone read Sept 2026. Key files cited inline: <code class="inl">core/{runner,controller,substep}.py</code>, <code class="inl">core/llm/{behavior,archetype,backend,prompt_manager}.py</code>, <code class="inl">core/distributions/distributions.py</code>, <code class="inl">core/helpers/soft.py</code>, <code class="inl">models/covid/substeps/new_transmission/{transition,action}.py</code>, <code class="inl">models/macro_economics/simulator.py</code>, <code class="inl">models/*/calibnn.py</code>.</p>
+  </div>
+</section>
+
+<div class="foot">
+  <div class="wrap">
+    Companion to sim-alpha.html · built for Daniel · AgentTorch taken apart from the source · read top-to-bottom, everything defined before use.
+  </div>
+</div>
+
+<script>
+(function(){
+  var btn=document.getElementById('themebtn');
+  btn&&btn.addEventListener('click',function(){
+    var r=document.documentElement;
+    var cur=r.getAttribute('data-theme');
+    if(!cur){cur=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
+    r.setAttribute('data-theme',cur==='dark'?'light':'dark');
+  });
+  var links=[].slice.call(document.querySelectorAll('nav.secs a'));
+  var secs=links.map(function(a){return document.querySelector(a.getAttribute('href'));});
+  function onScroll(){
+    var y=window.scrollY+70,best=0;
+    for(var i=0;i<secs.length;i++){if(secs[i]&&secs[i].offsetTop<=y)best=i;}
+    links.forEach(function(a,i){a.classList.toggle('active',i===best);});
+  }
+  window.addEventListener('scroll',onScroll,{passive:true});onScroll();
+})();
+</script>
+</body>
+</html>

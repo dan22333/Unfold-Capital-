@@ -1,0 +1,1791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Study Notes — LLMs as World-Simulators for Market Alpha</title>
+<style>
+:root{
+  --ground:#f5f4f0; --panel:#ffffff; --panel-2:#f6f5f1; --ink:#1a1a1c; --ink-soft:#33342f;
+  --muted:#5f6058; --faint:#8c8d82; --line:#e5e3da; --line-strong:#d0cec2;
+  --accent:#b5641a; --accent-soft:#f0e2cf; --accent-ink:#8a4a10;
+  --teal:#256b64; --teal-soft:#d8e8e4;
+  --good:#2b6e46; --good-soft:#dcebdf; --warn:#a6640f; --danger:#a83c2c; --danger-soft:#f0dcd6;
+  --shadow:0 1px 2px rgba(26,26,28,.05),0 8px 28px -14px rgba(26,26,28,.14);
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --read:730px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --ground:#101113; --panel:#17181b; --panel-2:#1c1e21; --ink:#eceae4; --ink-soft:#cbc9c1;
+    --muted:#9a998e; --faint:#6d6d64; --line:#282a2d; --line-strong:#383a3d;
+    --accent:#dd9a4a; --accent-soft:#352a19; --accent-ink:#eeb463;
+    --teal:#54b5a7; --teal-soft:#16302c; --good:#54bd83; --good-soft:#14281c;
+    --warn:#dd9a4a; --danger:#e07b6a; --danger-soft:#2c1713;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px -16px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="light"]{--ground:#f5f4f0;--panel:#ffffff;--panel-2:#f6f5f1;--ink:#1a1a1c;--ink-soft:#33342f;--muted:#5f6058;--faint:#8c8d82;--line:#e5e3da;--line-strong:#d0cec2;--accent:#b5641a;--accent-soft:#f0e2cf;--accent-ink:#8a4a10;--teal:#256b64;--teal-soft:#d8e8e4;--good:#2b6e46;--good-soft:#dcebdf;--warn:#a6640f;--danger:#a83c2c;--danger-soft:#f0dcd6;--shadow:0 1px 2px rgba(26,26,28,.05),0 8px 28px -14px rgba(26,26,28,.14);}
+:root[data-theme="dark"]{--ground:#101113;--panel:#17181b;--panel-2:#1c1e21;--ink:#eceae4;--ink-soft:#cbc9c1;--muted:#9a998e;--faint:#6d6d64;--line:#282a2d;--line-strong:#383a3d;--accent:#dd9a4a;--accent-soft:#352a19;--accent-ink:#eeb463;--teal:#54b5a7;--teal-soft:#16302c;--good:#54bd83;--good-soft:#14281c;--warn:#dd9a4a;--danger:#e07b6a;--danger-soft:#2c1713;--shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px -16px rgba(0,0,0,.7);}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+  font-size:17.5px;line-height:1.72;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+h1,h2,h3,h4{font-family:var(--serif);font-weight:600;line-height:1.18;text-wrap:balance;margin:0}
+p{margin:0 0 1.05em}
+a{color:var(--accent-ink);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--accent) 38%,transparent)}
+a:hover{border-bottom-color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+em{font-style:italic}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.dim{color:var(--muted)}
+.wrap{max-width:var(--read);margin:0 auto;padding:0 24px}
+.wide{max-width:1080px;margin:0 auto;padding:0 24px}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-ink);font-weight:600}
+
+/* nav */
+header.top{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--ground) 90%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top .bar{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;align-items:center;gap:16px;height:54px}
+.brand{font-family:var(--mono);font-size:12px;letter-spacing:.05em;font-weight:600;white-space:nowrap}
+.brand b{color:var(--accent-ink)}
+nav.secs{display:flex;gap:2px;overflow-x:auto;flex:1;scrollbar-width:none}
+nav.secs::-webkit-scrollbar{display:none}
+nav.secs a{font-family:var(--mono);font-size:11.5px;color:var(--muted);padding:6px 9px;border-radius:6px;border-bottom:none;white-space:nowrap}
+nav.secs a:hover{color:var(--ink);background:var(--panel-2)}
+nav.secs a.active{color:var(--accent-ink);background:var(--accent-soft)}
+.themebtn{font-family:var(--mono);font-size:11px;background:var(--panel);border:1px solid var(--line-strong);color:var(--muted);border-radius:6px;padding:6px 9px;cursor:pointer}
+.themebtn:hover{color:var(--ink);border-color:var(--accent)}
+
+/* hero */
+.hero{padding:70px 0 46px;border-bottom:1px solid var(--line);
+  background:radial-gradient(120% 80% at 85% -20%,var(--accent-soft) 0%,transparent 60%)}
+.hero h1{font-size:clamp(30px,5vw,50px);letter-spacing:-.015em;max-width:19ch}
+.hero .lede{font-size:clamp(18px,2.1vw,21px);color:var(--ink-soft);margin-top:22px}
+.hero .who{margin-top:22px;font-family:var(--mono);font-size:12px;color:var(--faint)}
+
+/* sections */
+section{padding:56px 0;border-bottom:1px solid var(--line);scroll-margin-top:62px}
+.part-label{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:10px}
+h2.part{font-size:clamp(26px,3.6vw,38px);letter-spacing:-.015em;margin-bottom:6px}
+h3.sub{font-size:clamp(21px,2.6vw,26px);margin:44px 0 4px;letter-spacing:-.01em}
+h3.sub .n{font-family:var(--mono);font-size:15px;color:var(--accent);font-weight:600;margin-right:10px}
+h4.mini{font-size:18px;margin:26px 0 6px}
+.lead-in{color:var(--ink-soft);font-size:19px;margin:12px 0 8px}
+
+/* definition / insight / worked boxes */
+.box{border-radius:12px;padding:18px 22px;margin:22px 0;border:1px solid var(--line);background:var(--panel);box-shadow:var(--shadow)}
+.box .bt{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.box.def{border-left:4px solid var(--teal)} .box.def .bt{color:var(--teal)}
+.box.take{border-left:4px solid var(--accent);background:var(--accent-soft)} .box.take .bt{color:var(--accent-ink)}
+.box.work{border-left:4px solid var(--muted);background:var(--panel-2)} .box.work .bt{color:var(--muted)}
+.box.warn{border-left:4px solid var(--danger);background:var(--danger-soft)} .box.warn .bt{color:var(--danger)}
+.box.good{border-left:4px solid var(--good);background:var(--good-soft)} .box.good .bt{color:var(--good)}
+.box p:last-child{margin-bottom:0}
+.box .term{font-family:var(--serif);font-weight:600;font-style:italic}
+
+/* verdict banner */
+.verdict{border:1px solid var(--accent);border-left:6px solid var(--accent);border-radius:14px;background:linear-gradient(135deg,var(--accent-soft),var(--panel) 72%);
+  padding:24px 26px;margin:26px 0;box-shadow:var(--shadow)}
+.verdict .vt{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-ink);font-weight:700;margin-bottom:10px}
+.verdict h4{font-size:22px;margin:0 0 10px}
+.verdict p:last-child{margin-bottom:0}
+
+/* equations */
+.eq{font-family:var(--serif);font-style:italic;font-size:19px;text-align:center;background:var(--panel-2);
+  border:1px solid var(--line);border-radius:10px;padding:20px 46px 20px 22px;margin:20px 0;position:relative;overflow-x:auto;line-height:2}
+.eq .en{position:absolute;right:14px;top:10px;font-family:var(--mono);font-style:normal;font-size:11px;color:var(--faint)}
+.eq .where{display:block;font-family:var(--sans);font-style:normal;font-size:13.5px;color:var(--muted);margin-top:12px;line-height:1.6;text-align:left}
+.m{font-family:var(--serif);font-style:italic}
+.frac{display:inline-flex;flex-direction:column;text-align:center;vertical-align:middle;margin:0 .18em;font-size:.92em}
+.frac>span:first-child{border-bottom:1.2px solid currentColor;padding:0 .4em;line-height:1.35}
+.frac>span:last-child{padding:0 .4em;line-height:1.35}
+sub{font-size:.72em} sup.p{font-size:.72em}
+
+/* ledger table */
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);margin:20px 0;background:var(--panel)}
+table.led{width:100%;border-collapse:collapse;font-size:15px;min-width:620px}
+table.led th{font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;text-align:left;color:var(--muted);padding:12px 16px;border-bottom:1px solid var(--line-strong);font-weight:600}
+table.led td{padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+table.led tr:last-child td{border-bottom:none}
+table.led td:first-child{font-weight:600}
+.yes{color:var(--good);font-weight:700}.no{color:var(--danger);font-weight:700}.mid{color:var(--warn);font-weight:700}
+.tabnum{font-variant-numeric:tabular-nums;font-family:var(--mono)}
+.tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.tag.need{color:var(--good);background:var(--good-soft)} .tag.nice{color:var(--warn);background:var(--accent-soft)} .tag.skip{color:var(--danger);background:var(--danger-soft)}
+
+/* market cards */
+.mkt{border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:var(--shadow);margin:16px 0;overflow:hidden}
+.mkt .head{display:flex;justify-content:space-between;align-items:baseline;gap:14px;padding:16px 20px 10px}
+.mkt .head h4{font-size:19px}
+.mkt .rank{font-family:var(--mono);font-size:11px;color:var(--accent-ink);font-weight:700;background:var(--accent-soft);padding:3px 9px;border-radius:20px;white-space:nowrap}
+.mkt .body{padding:0 20px 16px;font-size:15px;color:var(--ink-soft)}
+.mkt .facts{display:flex;flex-wrap:wrap;gap:0;border-top:1px solid var(--line);background:var(--panel-2)}
+.mkt .facts .f{flex:1;min-width:130px;padding:11px 16px;border-right:1px solid var(--line)}
+.mkt .facts .f:last-child{border-right:none}
+.mkt .facts .fl{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.mkt .facts .fv{font-size:15px;font-weight:600;margin-top:2px}
+
+/* callout list */
+ul.clean{list-style:none;padding:0;margin:14px 0}
+ul.clean li{display:grid;grid-template-columns:24px 1fr;gap:10px;margin-bottom:12px;align-items:start}
+ul.clean li .ic{font-family:var(--mono);font-weight:700;margin-top:1px}
+ul.clean.ok li .ic{color:var(--good)}ul.clean.no li .ic{color:var(--danger)}ul.clean.step li .ic{color:var(--accent-ink)}
+
+/* two-column compare */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+
+/* cost calc */
+.calc{display:grid;grid-template-columns:1.05fr 1fr;gap:24px;align-items:start;margin-top:8px}
+@media(max-width:820px){.calc{grid-template-columns:1fr}}
+.ctrl{margin-bottom:16px}
+.ctrl label{display:flex;justify-content:space-between;font-size:14px;color:var(--ink-soft);margin-bottom:6px}
+.ctrl label b{font-family:var(--mono);color:var(--accent-ink)}
+input[type=range]{width:100%;accent-color:var(--accent);height:4px}
+select{font-family:var(--mono);font-size:13px;padding:8px 10px;border:1px solid var(--line-strong);background:var(--panel);color:var(--ink);border-radius:8px;width:100%}
+.readout{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow)}
+.ro{display:flex;justify-content:space-between;align-items:baseline;padding:11px 0;border-bottom:1px solid var(--line)}
+.ro:last-child{border-bottom:none}
+.ro .rk{font-size:13.5px;color:var(--muted)}
+.ro .rv{font-family:var(--mono);font-size:19px;font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.ro.big .rv{font-size:24px;color:var(--accent-ink)}
+.ro .rv small{font-size:12px;color:var(--muted);font-weight:400}
+
+/* phases */
+.phase{display:grid;grid-template-columns:82px 1fr;gap:18px;padding:15px 0;border-bottom:1px solid var(--line)}
+.phase:last-child{border-bottom:none}
+.phase .pw{font-family:var(--mono);font-size:12.5px;color:var(--accent-ink);font-weight:600}
+.phase .pw small{display:block;color:var(--faint);font-weight:400;font-size:11px}
+
+/* refs */
+.refs{font-size:13.5px;color:var(--muted)}
+.refs p{margin:0 0 8px}.refs a{font-family:var(--mono);font-size:12px}
+.foot{padding:36px 0 72px;color:var(--faint);font-size:12.5px;font-family:var(--mono)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+html{scroll-behavior:smooth}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="bar">
+    <span class="brand">STUDY&nbsp;NOTES <b>/</b> LLMs&nbsp;→&nbsp;alpha</span>
+    <nav class="secs" id="nav">
+      <a href="#verdict">The verdict</a>
+      <a href="#landscape">Who's doing what</a>
+      <a href="#illusion">Signal or illusion?</a>
+      <a href="#capability">What LLMs can do</a>
+      <a href="#money">Strategy &amp; money</a>
+      <a href="#need">What you need</a>
+      <a href="#connections">Other links</a>
+      <a href="#data">The data</a>
+      <a href="#system">System design</a>
+      <a href="#proof">Proving it</a>
+      <a href="#mvp">MVP &amp; cost</a>
+      <a href="#vision">The bigger game</a>
+      <a href="#playbook">How you'd run it</a>
+      <a href="#sources">Sources</a>
+    </nav>
+    <button class="themebtn" id="theme">◐ theme</button>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <span class="eyebrow">A learning document, not a pitch</span>
+    <h1>Can an LLM simulate the world well enough to trade it?</h1>
+    <p class="lede">Study notes that build the whole idea from the ground up — every paper explained with a plain
+      example, every number labelled <em>good or bad</em>. This edition adds the part you asked for: a blunt
+      <b>verdict</b> on what to build and where the value actually lives, what <b>Point72, Citadel, Man Group and the
+      startups</b> are really doing, an honest read on whether the signal is <b>new or an illusion</b>, a full
+      <b>data-source survey</b>, a concrete <b>system design</b>, and a look at the two projects you flagged —
+      <b>MiroFish</b> and the MIT <b>Population&nbsp;AI</b> thesis.</p>
+    <p class="who">For Daniel · rebuilt 2026-09-15 · read top to bottom · ~60 min · every claim sourced at the end</p>
+  </div>
+</div>
+<!-- ================= VERDICT ================= -->
+<section id="verdict">
+  <div class="wrap">
+    <div class="part-label">Start here · the strong opinion</div>
+    <h2 class="part">The verdict — what to build, and where the value actually lives</h2>
+    <p class="lead-in">You asked for a strong opinion, not a survey. Here it is up front; the rest of the document is
+      the evidence. Read this section alone and you have the whole argument.</p>
+
+    <div class="verdict">
+      <div class="vt">◆ The one-paragraph answer</div>
+      <p><b>Build one thing: an LLM that <em>constructs and types the economic-link graph itself</em> — then trade the
+        slow diffusion of news across the non-obvious links it finds.</b> Do <em>not</em> build "an LLM that reads news
+        and predicts stocks" (commoditised, decaying) and do <em>not</em> build "an LLM that simulates the whole market
+        as a crowd of agents" (errors compound, nobody has made it pay). The defensible edge is narrow and specific:
+        <b>typed, directional, multi-hop links in low-attention corners of the market</b> that FactSet/Bloomberg supply-chain
+        tables and simple embedding-similarity both miss — validated strictly out-of-sample, net of costs, on a model
+        whose training cut-off you control.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">A</span>Your fear, answered honestly</h3>
+    <p>Your instinct — <em>"funds already map company connections and propagate news across them, so what's left?"</em>
+      — is correct, and it is the right fear to have. The research bears it out: FactSet shipped a supply-chain
+      customer-momentum signal (Mar 2026), State Street runs network-linked customer signals, and Man Group, Point72,
+      Balyasny and Bridgewater all run agentic research over filings and news. <b>Graph-based news propagation is table
+      stakes.</b> But "already mapped" is not the same as "already priced," and three specific gaps survive:</p>
+
+    <ul class="clean step">
+      <li><span class="ic">1.</span><span><b>The known link signal is <em>lossy</em>, and everyone trades the lossy
+        version.</b> A supplier's stock reacts to its customer's <em>stock return</em>. But a +20% customer move can mean
+        higher end-demand, a buyback, a cost cut, or multiple-expansion — each implies a completely different
+        consequence for the supplier. The compressed market signal throws that away. Recovering the
+        <em>mechanism</em> (why did the customer move, and what does that specific cause do to the supplier's units,
+        margin, and EPS) is information the price signal does not contain.</span></li>
+      <li><span class="ic">2.</span><span><b>The deepest mispricing sits in exactly the graph region an LLM is cheapest
+        at.</b> Ali &amp; Hirshleifer (2020) found cross-firm spillover is <em>strongest for complex and indirect
+        linkages</em> — the 2nd- and 3rd-hop implications that human desks don't bother to trace and that SIC/NAICS
+        industry codes can't see. That is the one empirical fact that most supports your idea (§<a href="#illusion">Signal or illusion</a>).</span></li>
+      <li><span class="ic">3.</span><span><b>The links themselves are the scarce asset — and building them from text
+        is genuinely new.</b> Traditional desks buy a static edge list from FactSet. The frontier (Breitung &amp; Müller,
+        <em>JFE</em> 2025; text-based networks à la Hoberg &amp; Phillips) shows LLM-built networks surface real,
+        return-predictive links that industry codes miss. This — <b>graph construction, not sentiment scoring</b> — is
+        where a fresh edge can still live.</span></li>
+    </ul>
+
+    <div class="box warn"><div class="bt">✕ And where your fear is fully justified — the illusion risks</div>
+      <p style="margin-bottom:8px">Four findings say the naive version of this trade is already dead or an artefact.
+      Take them seriously; they shape the whole build:</p>
+      <ul class="clean no" style="margin:0">
+        <li><span class="ic">✕</span><span><b>It may be one factor, not many.</b> Ali-Hirshleifer shows customer,
+          supplier, geographic, technological and industry spillovers largely <em>collapse into a single shared-attention
+          factor</em>. "Multi-hop reasoning" may just re-derive a known, largely-arbitraged signal — you can't stack these
+          alphas.</span></li>
+        <li><span class="ic">✕</span><span><b>The flagship version already decayed to zero.</b> Pinchuk (2023) shows the
+          canonical Cohen-Frazzini customer-momentum effect is much smaller post-discovery and roughly <em>negative after
+          2005</em>.</span></li>
+        <li><span class="ic">✕</span><span><b>It lives in the "dies-after-costs" quadrant.</b> Link-spillover is
+          high-turnover <em>and</em> concentrated in small, illiquid names — exactly the corner Novy-Marx &amp; Velikov
+          and Hou-Xue-Zhang show does not survive trading costs.</span></li>
+        <li><span class="ic">✕</span><span><b>Leakage is acute for links specifically.</b> An LLM "reasoning" that Firm A
+          supplies Firm B may just be <em>recalling a memorised, post-hoc-known</em> relationship and its realised
+          co-movement. Three independent studies show telling the model to "ignore the future" does not work (§<a href="#capability">4</a>).</span></li>
+      </ul>
+    </div>
+
+    <h3 class="sub"><span class="n">B</span>So: what to build (and what to refuse to build)</h3>
+    <div class="grid2">
+      <div class="box good"><div class="bt">✓ Build this</div>
+        <p style="margin-bottom:8px"><b>A "link factory + mechanism-aware ripple" engine:</b></p>
+        <ul class="clean ok" style="margin:0">
+          <li><span class="ic">1</span><span>A <b>deterministic entity-resolution spine</b> (every firm gets a stable
+            ID) so every link is auditable and point-in-time.</span></li>
+          <li><span class="ic">2</span><span>An <b>LLM that reads filings + news to propose typed, directional links</b>
+            ("A's tariff exposure raises B's input cost because B sources component X from A's region") — including
+            2nd/3rd-hop and cross-industry links the tables miss.</span></li>
+          <li><span class="ic">3</span><span>A <b>mechanism classifier</b>: for each shock, what <em>kind</em> is it,
+            and what is its sign on the neighbour's fundamentals — not just "the neighbour's stock moved."</span></li>
+          <li><span class="ic">4</span><span>A <b>ruthless validation harness</b> built <em>first</em> (leakage tests,
+            deflated Sharpe, net-of-cost) — the moat is discipline, not the model.</span></li>
+        </ul>
+      </div>
+      <div class="box warn"><div class="bt">✕ Refuse to build (for the MVP)</div>
+        <ul class="clean no" style="margin:0">
+          <li><span class="ic">✕</span><span><b>"LLM reads headline → predicts next-day return."</b> Real but decaying
+            fast (Sharpe 6.5→1.2 in three years as everyone runs it); it's a capability check, not a business.</span></li>
+          <li><span class="ic">✕</span><span><b>An agent-population market simulator</b> (crowds of LLM traders).
+            Errors compound past ~10 steps; no one has an audited live track record; the diversity collapses.</span></li>
+          <li><span class="ic">✕</span><span><b>A giant LLM-extracted "knowledge graph" as source of truth.</b> Raw GPT-5
+            scores F=0.23 at identifying supply-chain links. Anchor to a registry; use the LLM for <em>candidate</em>
+            discovery, not ground truth.</span></li>
+          <li><span class="ic">✕</span><span><b>Fine-tuning / RL / Lean-verified theses.</b> Prompting + retrieval is
+            enough; there's no verifier for "was this trade right," and you can't prove a future from axioms (§<a href="#need">6</a>).</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 class="sub"><span class="n">C</span>The honest probability</h3>
+    <p>On the published evidence, the <b>base rate is against</b> a large, durable, net-of-cost new signal. The most
+      likely truthful outcome of a serious 12-week test is a <b>small, capacity-constrained, decaying edge</b> — real
+      in-sample, mostly competed or costed away at scale. That is not a reason to skip it; it is the reason to build the
+      validator first and size the ambition to <em>tens</em>, not hundreds, of millions of dollars of capacity. The
+      one version of your thesis the literature has <em>not</em> refuted, and that no fund publicly runs, is the narrow
+      one above: <b>LLM-typed directional graphs over low-attention, complex, multi-hop links, proven leakage-free.</b></p>
+
+    <div class="box take"><div class="bt">◆ The whole project in one sentence</div>
+      Build a system that <em>reads a shock and constructs the causal ripple across economically linked firms into a
+      ranked, typed, mechanism-aware list of who will be hurt or helped</em> — and prove, with tests that assume the
+      model is cheating from memory until shown otherwise, that the ranking predicts future returns well enough, and
+      cheaply enough, to make money after costs.</div>
+  </div>
+</section>
+<!-- ================= LANDSCAPE ================= -->
+<section id="landscape">
+  <div class="wrap">
+    <div class="part-label">Part 1 · The competition</div>
+    <h2 class="part">Who is actually doing this — funds and startups</h2>
+    <p class="lead-in">You asked what Point72, Citadel, Man Group and the startups are doing. Here is the honest map,
+      separating what is on the record from what is marketing. The pattern is stark: <b>almost everyone uses LLMs to
+      accelerate research, almost no one has them generating live signals, and no one publicly runs a "world-model"
+      that produces alpha.</b></p>
+
+    <div class="box take"><div class="bt">◆ The one-line reads</div>
+      <ul class="clean step" style="margin:0">
+        <li><span class="ic">›</span><span><b>Man Group</b> is the <em>only</em> fund on record with agentic AI producing
+          <em>live-traded</em> signals — "dozens approved," all human-vetted through the normal committee.</span></li>
+        <li><span class="ic">›</span><span><b>Citadel's Ken Griffin</b> is the loud skeptic: GenAI "falls short" for
+          alpha, it's a "force multiplier." (Then privately admitted it was "profoundly more powerful" than he'd said.)</span></li>
+        <li><span class="ic">›</span><span><b>Bridgewater</b> is the most aggressive — a live ~$2bn machine-learning
+          macro fund and an "AIA Labs" causal Reasoning Engine that explicitly targets <em>why</em> prices move.</span></li>
+        <li><span class="ic">›</span><span><b>Every well-funded startup is a research copilot or data plumbing</b> —
+          not an alpha engine. The firms that marketed "knowledge-graph alpha" hardest (Yewno, Accern) died or pivoted
+          to infrastructure.</span></li>
+      </ul>
+    </div>
+
+    <h3 class="sub"><span class="n">1.1</span>The funds — copilots almost everywhere, live signals almost nowhere</h3>
+    <div class="tblwrap"><table class="led">
+      <thead><tr><th>Fund</th><th>What they run</th><th>Live signals?</th><th>Relation to your thesis</th></tr></thead>
+      <tbody>
+        <tr><td>Man Group<br><small class="dim">Man Numeric / AHL</small></td><td>AlphaGPT: agent mines data → writes strategy code → backtests. Alpha Assistant for trend.</td><td class="mid">Yes — "dozens," human-vetted</td><td>The proof agentic research can pass the same bar as humans. Says the moat is <b>data + infra, not the model</b>.</td></tr>
+        <tr><td>Citadel</td><td>Research copilot over transcripts/filings; an agent that replicates papers OOS in hours. (Citadel <em>Securities</em>, the market-maker, genuinely uses DL as the signal.)</td><td class="no">No (fund) — "force multiplier"</td><td>The skeptic's baseline. Griffin's public "GenAI can't find alpha" is the claim you're testing against.</td></tr>
+        <tr><td>Point72</td><td>Turion (long/short the AI supply chain — AI as the <em>subject</em>); locked-VNet GPT copilot; Cubist/Market-Intelligence ML on alt-data.</td><td class="no">No public signal claim</td><td>CTO calls <b>"ontology mapping the hidden iceberg"</b> — ~6 months normalising ticker/vendor aliases. That is your entity-resolution problem, confirmed as real and hard.</td></tr>
+        <tr><td>Balyasny</td><td>"AI analyst" firm-wide; <b>BAM Embeddings</b> (EMNLP 2024) — fine-tuned retrieval beating OpenAI embeddings on financial docs.</td><td class="no">Augmentation, not autonomous</td><td>Their embeddings work is the closest public tech to your link-discovery layer.</td></tr>
+        <tr><td>Bridgewater</td><td><b>AIA Labs</b> "Reasoning Engine" (causal); a live ~$2bn ML macro fund with AI as primary decision-maker; AIA Forecaster (matched superforecasters).</td><td class="mid">Yes — a whole ML fund</td><td>The only major public "causal / world-model" framing. Macro, not micro-links — different game, useful posture.</td></tr>
+        <tr><td>Two Sigma</td><td>Deep ML culture; cautious on LLMs. Execs warn LLMs <b>exacerbate overfitting and lookahead</b>.</td><td class="mid">"including alpha ID," vague</td><td>Their public caution about lookahead is your §<a href="#capability">4</a> risk, from a fund that would know.</td></tr>
+        <tr><td>Millennium</td><td>Anthropic partnership for a "digital risk analyst"; ~50-person ML lab (ex-BloombergGPT lead).</td><td class="no">No — explicitly risk, not signal</td><td>Shows even the Anthropic tie-ups are framed as risk/ops, not alpha.</td></tr>
+        <tr><td>D.E. Shaw / RenTec</td><td>Quant/ML-native but opaque; the famous "LLM" work at "D.E. Shaw <em>Research</em>" is a <em>separate biochemistry lab</em>. RenTec's tie to language models is 1990s speech-recognition heritage.</td><td class="no">No public LLM-signal evidence</td><td>Don't be intimidated by myth: no evidence either runs transformer-LLM link alpha.</td></tr>
+      </tbody>
+    </table></div>
+    <div class="box def"><div class="bt">▸ In plain English — what this table means for you</div>
+      <p>The giants have three things you don't: proprietary data, infrastructure, and a hundred quants. They have used
+        those to make LLMs a <em>research accelerator</em>. What almost none of them has publicly cracked is
+        <em>LLMs generating durable, novel signal</em> — Griffin says it can't, Man says it can but only human-vetted,
+        Bridgewater bets it can at the macro level. That gap is your opening: not to out-muscle them on data, but to
+        prove out one narrow, well-chosen, leakage-proof micro-structure edge they haven't published. The moat every
+        one of them names is the same — <b>proprietary point-in-time data + validation infrastructure, never the
+        model</b>. Plan accordingly.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">1.2</span>The startups — copilots and plumbing, dressed as alpha</h3>
+    <div class="tblwrap"><table class="led">
+      <thead><tr><th>Company</th><th>What it really is</th><th>Money</th><th>Category</th></tr></thead>
+      <tbody>
+        <tr><td>Rogo</td><td>"AI analyst" for banking/PE — produces analyst work product, not trades.</td><td>~$750M val (Series C, 2026)</td><td class="mid">Research copilot</td></tr>
+        <tr><td>Hebbia</td><td>Multi-step reasoning across document sets ("Matrix" data grid).</td><td>~$700M val (a16z)</td><td class="mid">Research copilot</td></tr>
+        <tr><td>AlphaSense (+Tegus)</td><td>AI/NLP search over ~450M docs; summaries + generative search.</td><td>$7.5B val, &gt;$600M ARR</td><td class="no">Reading acceleration</td></tr>
+        <tr><td>Brightwave</td><td>Research assistant; markets a "knowledge graph + reasoning engine," sells hours saved.</td><td>$21M (P72 Ventures seed)</td><td class="mid">Research copilot</td></tr>
+        <tr><td>Kensho (S&amp;P)</td><td>Pure infrastructure: speech-to-text, entity linking (NERD), entity resolution (Link, ~70M cos).</td><td>Acq. ~$550M</td><td class="no">Data infrastructure</td></tr>
+        <tr><td>BloombergGPT</td><td>50B-param finance model — since <em>overtaken by GPT-4</em> on public benchmarks; no standalone product.</td><td>~$10M to train</td><td class="no">Model (superseded)</td></tr>
+        <tr><td>Yewno / Accern</td><td>The purest "knowledge-graph alpha" plays. <b>Yewno effectively dead; Accern acquired &amp; rebranded as data infra.</b></td><td>—</td><td class="no">Failed / pivoted</td></tr>
+      </tbody>
+    </table></div>
+    <div class="box warn"><div class="bt">! The white space is also the warning</div>
+      <p>No fund and no funded startup publicly runs an LLM <em>world-model / simulation</em> to generate signals — that
+        is genuine open territory, and it is where your original "simulate the future" instinct points. But the
+        emptiness cuts both ways: <b>the companies that bet hardest on "knowledge-graph alpha" are the ones that
+        died.</b> The two failure modes that killed them are the two you must underwrite against from day one:
+        <b>look-ahead / memorisation bias</b> (the backtest was fake) and <b>diffusion-driven decay</b> (the edge was
+        real, then everyone got the same tool). Both have dedicated defences later (§<a href="#proof">10</a>).</p>
+    </div>
+
+    <div class="box take"><div class="bt">◆ Part 1 takeaway</div>
+      The industry has commoditised <em>reading</em> (summarisation, extraction, RAG copilots) and is early on
+      <em>reasoning</em> (typed causal graphs, multi-hop). Your edge cannot be "we use LLMs on filings" — everyone does.
+      It has to be a <b>specific, proprietary, point-in-time link graph + a validation discipline</b> aimed at the one
+      corner (complex, indirect, low-attention links) the peer-reviewed evidence says is still mispriced.
+    </div>
+  </div>
+</section>
+<!-- ================= SIGNAL OR ILLUSION ================= -->
+<section id="illusion">
+  <div class="wrap">
+    <div class="part-label">Part 2 · The evidence, for and against</div>
+    <h2 class="part">Is the signal new — or an illusion?</h2>
+    <p class="lead-in">This is the question you kept circling: <em>"maybe it has no new signal, it just has the illusion
+      of one."</em> So we went looking for papers on <b>both</b> sides. The verdict: the underlying economics is
+      bulletproof, the tradable edge is small and shrinking, and the LLM layer is the part most exposed to fooling
+      yourself. Here is the whole case, explained.</p>
+
+    <h3 class="sub"><span class="n">2.1</span>The support — economic links really do predict returns</h3>
+    <p>The mechanism is one of the most replicated facts in empirical finance: <b>information diffuses slowly across
+      economically linked firms because investors have limited attention.</b> Prices react fast to a firm's own news
+      and slowly to news about firms it is linked to. Each paper below built a different kind of link and found the
+      same drift.</p>
+
+    <div class="box def"><div class="bt">▸ How these studies work, with a simple example</div>
+      <p>Take Cohen &amp; Frazzini (2008), the founding paper. They read disclosures where a company names a customer
+        worth &gt;10% of its revenue (US firms must disclose this). That builds a map: <em>this supplier depends on that
+        customer.</em> Then each month they <b>go long the suppliers whose customer's stock did well last month, and
+        short the suppliers whose customer did badly</b>, and subtract the standard risk factors. Everyday version: if
+        you know Ford had a great month and prices haven't yet moved the small firm that makes 40% of its revenue selling
+        Ford one specific part, you buy that small firm. The drift earned <b>~150 bps/month</b> gross. <b>Is that good?</b>
+        Enormous on paper — but "gross," pre-2005, and, as we'll see, mostly gone now.</p>
+    </div>
+
+    <div class="tblwrap"><table class="led">
+      <thead><tr><th>Paper</th><th>The link it built</th><th>Gross result</th><th>Real / tradable?</th></tr></thead>
+      <tbody>
+        <tr><td>Cohen &amp; Frazzini 2008</td><td>Disclosed &gt;10% customer→supplier</td><td class="tabnum">~150 bps/mo</td><td class="mid">Foundational, but lives in tiny suppliers → costs bite</td></tr>
+        <tr><td>Menzly &amp; Ozbas 2010</td><td>Supplier/customer <em>industries</em> (input-output tables)</td><td class="tabnum">Strong</td><td class="yes">Most tradable — liquid industry portfolios, dodges the microcap trap</td></tr>
+        <tr><td>Cohen &amp; Lou 2012</td><td>"Complicated" conglomerates vs pure-play peers</td><td class="tabnum">~118 bps/mo</td><td class="yes">Clean; large liquid names</td></tr>
+        <tr><td>Lee et al. 2019</td><td>Shared patent classes (technology peers)</td><td class="tabnum">~117 bps/mo</td><td class="mid">Largest in low-attention, hard-to-arbitrage names</td></tr>
+        <tr><td>Parsons et al. 2020</td><td>Same-metro, different-industry (geography)</td><td class="tabnum">~5–6%/yr</td><td class="yes">Unusually <em>not</em> microcap-only → cost-robust</td></tr>
+        <tr><td>Cohen, Malloy &amp; Nguyen 2020 ("Lazy Prices")</td><td>Year-over-year change in 10-K language</td><td class="tabnum">up to 188 bps/mo</td><td class="mid">Low turnover (quarterly), but short leg is hard-to-short</td></tr>
+        <tr><td><b>Ali &amp; Hirshleifer 2020</b></td><td>Two firms share a sell-side analyst</td><td class="tabnum">1.68%/mo, t=9.67</td><td class="yes">Unifying result; survives costs (~42.5bp break-even), core effect stronger in large-caps</td></tr>
+        <tr><td>Hoberg &amp; Phillips 2016</td><td>Text-similarity of 10-K business descriptions (TNIC)</td><td class="tabnum">Beats SIC/NAICS</td><td class="yes">The intellectual ancestor of LLM link-extraction</td></tr>
+        <tr><td>Breitung &amp; Müller 2025 (JFE)</td><td>GPT-generated firm descriptions → embeddings, ~63k firms/67 countries</td><td class="tabnum">US ~89–103bp/mo (t≤9.41)</td><td class="mid">Proves LLM nets find links SIC misses — but alpha is <em>gross</em> &amp; microcap-concentrated, no Sharpe reported</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="box good"><div class="bt">✓ The two facts that most support your idea</div>
+      <p style="margin-bottom:8px"><b>(1) Ali &amp; Hirshleifer's kicker:</b> the abstract states the effects are
+        <em>"stronger for complex and indirect linkages"</em> — where "complex" = more connections/higher centrality, and
+        indirect (2nd-order) links matter most for <em>low-analyst-coverage</em> stocks. It's supporting mechanism
+        evidence (the headline is the unification), but it's real, peer-reviewed, and points at exactly the multi-hop,
+        low-attention graph region an LLM can traverse cheaply and a human desk won't.</p>
+      <p style="margin-bottom:0"><b>(2) Breitung &amp; Müller (peer-reviewed, JFE 2025):</b> networks built from
+        <em>LLM-generated business descriptions + embeddings</em> (~63k firms, 67 countries) find competitors/suppliers
+        that SIC/NAICS miss, and those links predict returns. This is the closest thing to published proof that the
+        <b>graph-construction</b> step — not sentiment — is where LLMs add something real. <em>Caveat (verified):</em> the
+        alpha is a gross 7-factor number concentrated in microcaps, attributed partly to limits-to-arbitrage, with no
+        Sharpe or net-of-cost figures — so it proves the <em>links exist</em>, not that they're scalably tradable.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">2.2</span>The unification problem — it may be one factor, not ten</h3>
+    <p>Here is the finding that should worry you most, because it attacks the core of "multi-hop reasoning finds many new
+      links." <b>Ali &amp; Hirshleifer (2020) show that customer, supplier, geographic, technological and industry
+      spillovers largely collapse into a <em>single</em> factor</b> — connected-firm momentum driven by <em>shared
+      analyst attention</em>. The links look different but are proxies for the same underlying thing: two firms watched
+      by the same overloaded analysts move together with a lag.</p>
+    <div class="box warn"><div class="bt">! Why this matters — you cannot stack these alphas</div>
+      <p>If you "discover" a customer link, a tech link and a geographic link between two firms, you have <em>not</em>
+        found three signals. You've found one signal three times. A strategy that claims to add them up is double- and
+        triple-counting the same premium. The honest test (§<a href="#proof">10</a>) is whether your LLM-found links are
+        <b>marginal to</b> the shared-analyst factor — i.e. do they predict returns <em>after</em> controlling for it.
+        If not, you've built an expensive re-derivation of a known, decayed anomaly.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">2.3</span>The against — decay, costs, and a direct kill-shot</h3>
+    <p>This is the strongest, most convergent body of evidence, and it is quantitative. Four independent findings say the
+      <em>naive</em> link trade is at or below zero net-of-cost today.</p>
+    <div class="tblwrap"><table class="led">
+      <thead><tr><th>Finding</th><th>What it showed</th><th>Consequence for you</th></tr></thead>
+      <tbody>
+        <tr><td>McLean &amp; Pontiff 2016</td><td>97 published predictors decay <b>~58% after publication</b> as arbitrageurs pile in</td><td class="no">A public, mechanical, attention-based signal is the textbook case for full decay</td></tr>
+        <tr><td>Harvey, Liu &amp; Zhu 2016</td><td>With ~316 factors tested, a new one needs <b>t &gt; 3.0</b>, not 2.0</td><td class="mid">Your bar is t&gt;3 <em>out-of-sample and net of costs</em>, not in-sample</td></tr>
+        <tr><td>Novy-Marx &amp; Velikov 2016</td><td>Anomalies with &lt;50% monthly turnover survive costs; <b>few above do</b></td><td class="no">Link-spillover is high-turnover <em>and</em> wide-spread microcaps — the death quadrant</td></tr>
+        <tr><td>Hou, Xue &amp; Zhang 2020</td><td>Under realistic (value-weighted) tests, <b>65% of 452 anomalies fail</b>; 96% of the "frictions" bucket fail</td><td class="no">Link-spillover sits squarely in the bucket that fails</td></tr>
+        <tr><td><b>Pinchuk 2023</b></td><td>The canonical Cohen-Frazzini customer-momentum effect is much smaller post-discovery and <b>~negative after 2005</b></td><td class="no">The flagship version of your exact trade already died</td></tr>
+      </tbody>
+    </table></div>
+    <div class="box def"><div class="bt">▸ In plain English — the "death quadrant"</div>
+      <p>Two things make an anomaly untradeable: you have to trade it <em>often</em> (high turnover eats you alive on
+        spreads), and it only works in <em>small, thinly-traded stocks</em> (wide spreads, you can't short them, you
+        can't size up). Link-spillover has both problems: the signal refreshes every time a linked firm gets news
+        (high turnover), and the drift is biggest in the small suppliers nobody watches (microcaps). Novy-Marx &amp;
+        Velikov measured that this combination usually nets to zero. Pinchuk then went and measured the specific trade
+        and found it already died around 2005. <b>This is the empirical heart of your fear, and it is real.</b></p>
+    </div>
+
+    <div class="box good"><div class="bt">✓ The honest counterweight — decay is real mispricing, not a mirage</div>
+      <p>Chen &amp; Zimmermann (open-source asset pricing) replicate ~98% of clearly-significant anomalies and find
+        publication bias shrinks returns only ~12% — so the ~50% decay is <b>real mispricing being arbitraged away, not
+        p-hacking</b>. Why is that good news? Because it means the effect <em>was</em> genuine, and fresh mispricing can
+        re-appear wherever attention is scarce and a link is newly formed or newly relevant. Your edge, if it exists,
+        is being <em>early</em> to links the crowd hasn't priced yet — not harvesting the decayed textbook one.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">2.4</span>The LLM-return-prediction papers — thin, and mostly not what they seem</h3>
+    <ul class="clean step">
+      <li><span class="ic">›</span><span><b>Lopez-Lira &amp; Tang (2023)</b> — GPT scores news headlines, predicts next-day
+        returns. Famous "~90% accuracy" is the <em>non-tradable instant reaction</em>; the tradable drift is ~55–58% and
+        concentrated in small/hard-to-short names. Their own follow-up shows the Sharpe <b>decaying 6.5→3.7→2.3→1.2</b>
+        from 2021 to 2024 as the tool spread. <em>Good as a capability check; a warning as a business.</em></span></li>
+      <li><span class="ic">›</span><span><b>Gu, Kelly &amp; Xiu (2020)</b> — the benchmark. Neural nets beat linear models
+        (VW Sharpe ≈ 1.35). But this is <em>ML, not LLM</em> — the bar any LLM strategy must clear to count as new.</span></li>
+      <li><span class="ic">›</span><span><b>Chen, Kelly &amp; Xiu</b> — LLM <em>embeddings</em> of news; reported Sharpe ≈
+        4.6. <em>Implausibly high</em> for a real strategy; leans on microcaps. Treat as an upper bound, not a target.</span></li>
+      <li><span class="ic">›</span><span><b>BloombergGPT / FinGPT</b> — capability benchmarks, <em>not</em> alpha papers.
+        No trading Sharpe. Do not cite them as evidence LLMs make money.</span></li>
+      <li><span class="ic">›</span><span><b>Kim, Muhn &amp; Nikolaev (2024)</b> — GPT-4 beats the median analyst at
+        earnings-direction from anonymised statements. Exciting idea, but the arXiv version was <b>withdrawn</b> for data
+        inconsistencies — cite the idea, distrust the numbers.</span></li>
+    </ul>
+
+    <div class="box take"><div class="bt">◆ Part 2 takeaway — the balanced bottom line</div>
+      <p style="margin-bottom:8px"><b>Strong:</b> the economics (slow diffusion across links) is bulletproof, and two
+        peer-reviewed results say LLM-<em>built</em> networks and complex/indirect links carry real, still-mispriced
+        signal.</p>
+      <p style="margin-bottom:8px"><b>Likely illusion:</b> it's probably one shared-attention factor, the flagship trade
+        already decayed to zero, it lives in the death-quadrant for costs, and the LLM layer is wide open to
+        memorisation bias.</p>
+      <p style="margin-bottom:0"><b>The narrow survivor:</b> new alpha, if any, lives in <em>LLM graph-construction</em>
+        (finding non-obvious, multi-hop, low-attention links the market hasn't priced) — <em>not</em> sentiment scoring —
+        proven marginal to the shared-analyst factor, leakage-free, and net of costs. That specific claim is unproven but
+        <em>unrefuted</em>. That is the whole reason to run the test.</p>
+    </div>
+  </div>
+</section>
+<!-- ================= CAPABILITY ================= -->
+<section id="capability">
+  <div class="wrap">
+    <div class="part-label">Part 3 · The tool</div>
+    <h2 class="part">What LLMs can and cannot do here</h2>
+    <p class="lead-in">Before trading, an honest map of the instrument. Two capabilities are real and useful; one danger
+      is so severe it dictates the entire design.</p>
+
+    <h3 class="sub"><span class="n">3.1</span>Real capability #1 — reading and typing causal links</h3>
+    <p>The most reliable thing an LLM does for you is <b>read filings and news and turn "who depends on whom, and how"
+      into structured data.</b> Not sentiment — <em>structure</em>. Given a 10-K it can extract "Firm A buys component X
+      from Firm B; a shortage of X would raise A's costs and delay A's product." That is a language task, and it is
+      exactly the graph-construction step §<a href="#illusion">2.1</a> identified as the defensible edge.</p>
+    <div class="box warn"><div class="bt">! But a raw LLM is unreliable at links unaided</div>
+      <p>The sharp warning: on a supply-chain-relation identification benchmark, <b>zero-shot GPT-5 scored F=0.229</b>
+        against <b>0.854</b> for a smaller model trained against a real graph (InterCorpRel-LLM, 2025). Read alone, a
+        frontier model invents and misses links. The fix is not "a better prompt" — it is to use the LLM for
+        <em>candidate</em> discovery and anchor every candidate to a deterministic registry and to disclosed facts
+        (§<a href="#system">9</a>).</p>
+    </div>
+
+    <h3 class="sub"><span class="n">3.2</span>Real capability #2 — extracting a tradable news signal (the Lopez-Lira result)</h3>
+    <div class="box take"><div class="bt">◆ Read this first — this is EVIDENCE, not the strategy</div>
+      <p style="margin-bottom:0">This result is measured at a <b>next-day</b> horizon. <b>That is not what you'll
+        trade</b> (your horizon is 1–2 months, §<a href="#money">5</a>). It's here for two reasons: it's the cleanest
+        proof an LLM <em>contains tradable information at all</em>, and it teaches the lesson <em>"statistically real ≠
+        profitable."</em> The logic that carries to your horizon: if an LLM has signal at 1 day, and the market is even
+        <em>slower</em> to price indirect multi-hop links, then 1–2 months is where the edge is bigger and less
+        contested.</p>
+    </div>
+    <p>Lopez-Lira &amp; Tang gave GPT a news headline and asked "good, bad, or neutral for the stock?", then checked
+      whether that score predicted the <em>next</em> day's return via a regression:</p>
+    <div class="eq"><span class="en">3.1</span>
+      r<sub>i,t+1</sub> = α + β · Score<sub>i,t</sub> + (controls) + ε<sub>i,t+1</sub>
+      <span class="where"><b>r<sub>i,t+1</sub></b> = the stock's return the day after the news. <b>Score</b> = the LLM's
+        sentiment (−1, 0, +1). <b>β</b> = return per unit of sentiment. Result: <b>β̂ ≈ 0.161</b>, <b>t = 6.80</b>.</span>
+    </div>
+    <div class="box def"><div class="bt">▸ Definition — the t-statistic (is it real, or luck?)</div>
+      <p>Any estimate is uncertain — rerun on a different sample and β̂ shifts. The t-stat divides the estimate by that
+        uncertainty: how many "error-bars" from zero it sits. <b>|t| &gt; 1.96</b> → under 5% chance it's really zero
+        (the famous <em>p &lt; 0.05</em>); <b>|t| &gt; 2.6</b> → under 1%. A t of <b>6.80</b> is overwhelming — the odds
+        of luck are astronomically small. <b>Is that good?</b> Statistically, yes: the news→return link is <em>real</em>.
+        <b>But a big t-stat does NOT mean the effect is large enough to profit from, will persist, or survives trading
+        costs.</b> Those are separate hurdles — and §<a href="#illusion">2.3</a> shows the naive version fails them.</p>
+    </div>
+    <div class="box def"><div class="bt">▸ Turning a hit-rate into money — the Sharpe ratio, plainly</div>
+      <p>On the tradable <em>drift</em>, GPT is right ~55–58% of the time — barely above a coin flip, which is
+        <em>normal</em> for real signals. How does that become money? The <b>Sharpe ratio</b> is your return divided by
+        your risk (annualised): how much reward per unit of stomach-churn. A tiny per-trade edge, repeated over hundreds
+        of independent bets a year, compounds: edge per trade × √(number of trades) is the intuition (the √252 that
+        turns a daily edge into an annual Sharpe). A Sharpe of 1 is good; 2 is excellent; above 3 is rare and usually
+        means you've made an error or found something that won't last. <b>The killer:</b> subtract trading costs and the
+        decay from everyone else running the same trade, and Lopez-Lira's own Sharpe fell from 6.5 to 1.2 in three
+        years.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">3.3</span>The honest capability ledger</h3>
+    <div class="tblwrap"><table class="led">
+      <thead><tr><th>Capability</th><th>Verdict</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td>Read text, extract facts &amp; relationships</td><td class="yes">CAN</td><td>Your core use — but verify against a registry</td></tr>
+        <tr><td>Type &amp; direction a causal link ("A raises B's cost")</td><td class="mid">CAN, supervised</td><td>Reliable only anchored to disclosed facts</td></tr>
+        <tr><td>Score news sentiment</td><td class="yes">CAN</td><td>Real signal, decaying fast, commoditised</td></tr>
+        <tr><td>Reason several hops down a causal chain</td><td class="mid">CAN, with scaffolding</td><td>The bet — must be proven, not assumed</td></tr>
+        <tr><td>Imitate one human's survey answers</td><td class="mid">~85% of their own consistency</td><td>Simile's result; stated attitudes, not money decisions</td></tr>
+        <tr><td>Simulate a whole market crowd</td><td class="no">CANNOT (usefully)</td><td>Diversity collapses; errors compound past ~10 steps</td></tr>
+        <tr><td>Forecast the future better than elite humans</td><td class="no">CANNOT (yet)</td><td>Superforecasters still beat top LLMs (p&lt;0.001)</td></tr>
+        <tr><td>Ignore what it already memorised about the past</td><td class="no">CANNOT</td><td>The central danger — next</td></tr>
+      </tbody>
+    </table></div>
+    <div class="box def"><div class="bt">▸ On "imitating humans" — the Simile / Stanford result, explained</div>
+      <p>The headline behind Simile's ~$2B valuation (Park et al., 2024): interview 1,052 people for two hours, feed each
+        transcript to a GPT agent, and the agent answers surveys <b>~85% as well as the person predicts their own answers
+        two weeks later</b> (a score of 1.0 would mean "as consistent as you are with yourself"). Impressive — but it
+        predicts <em>stated attitudes</em>, one person at a time, and LLM crowds are shown to <em>flatten</em> real
+        disagreement. A market is a crowd <em>interacting</em>, with money at stake. So: real enough to build a
+        market-research company on, <b>not</b> a turnkey market simulator. Useful to you as inspiration for the
+        "simulate futures" idea (§<a href="#vision">12</a>), not as a trading engine.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">3.4</span>The central danger — memorisation &amp; look-ahead leakage</h3>
+    <p>This is the risk that killed the "knowledge-graph alpha" startups and the one your whole design must defeat. The
+      model has <b>memorised history</b>. When you backtest on the past, it can "predict" what already happened because
+      it <em>remembers</em> it — not because it reasoned. Your beautiful backtest is then fiction.</p>
+    <div class="box warn"><div class="bt">✕ Four studies, one conclusion: you cannot tell it to forget</div>
+      <ul class="clean no" style="margin:0">
+        <li><span class="ic">✕</span><span><b>Lopez-Lira, Tang &amp; Zhu 2025 ("The Memorization Problem"):</b> LLMs recall
+          exact pre-cutoff financial values verbatim, reconstruct masked names/dates, and <em>defeat</em> "don't use the
+          future" instructions — then skill drops to zero after the cutoff. Their conclusion: <em>LLMs cannot be trusted
+          for economic forecasts over periods inside their training data.</em></span></li>
+        <li><span class="ic">✕</span><span><b>Sarkar &amp; Vafa 2025 (ICML):</b> ask GPT for "pre-2020 risk factors using
+          only info then available" and it surfaces <em>COVID-19</em>. Instructing it to ignore the future doesn't
+          work.</span></li>
+        <li><span class="ic">✕</span><span><b>Glasserman &amp; Lin 2023:</b> GPT-sentiment backtests are inflated by a
+          "distraction effect" from knowing the famous company — anonymising the name reduces it (a diagnostic and a
+          partial fix).</span></li>
+        <li><span class="ic">✕</span><span><b>Ludwig, Mullainathan &amp; Rambachan 2026:</b> never trust a closed model's
+          <em>stated</em> cutoff; valid LLM prediction requires provable "no training leakage." The burden is on
+          you.</span></li>
+      </ul>
+    </div>
+    <div class="box good"><div class="bt">✓ The four defences (this is why the build looks the way it does)</div>
+      <ul class="clean ok" style="margin:0">
+        <li><span class="ic">1</span><span><b>Test only after the cut-off.</b> Use an open-weight model with a
+          <em>documented</em> training date and run the strategy strictly on data the model could not have seen — or, best,
+          a point-in-time model (ChronoBERT/ChronoGPT, pretrained only on text available up to each date).</span></li>
+        <li><span class="ic">2</span><span><b>Anonymise names and dates.</b> If the link-alpha survives when "Apple"
+          becomes "Company&nbsp;7," it's reasoning, not name-recall.</span></li>
+        <li><span class="ic">3</span><span><b>Falsify aggressively.</b> Placebo tests, label shuffles, and a "lookahead
+          propensity" audit that checks the edge does <em>not</em> correlate with how memorable a firm-date is.</span></li>
+        <li><span class="ic">4</span><span><b>Prefer open weights</b> so the cut-off and training data are auditable —
+          the whole reason for open models is inspectability, not (as an earlier draft assumed) pruning.</span></li>
+      </ul>
+    </div>
+    <div class="box take"><div class="bt">◆ Part 3 takeaway</div>
+      The LLM's job is narrow and real: <b>read text → propose typed, directional links → flag the mechanism.</b> It is
+      not a forecaster and not a crowd simulator. And because it has memorised the past, <b>every result is guilty of
+      leakage until proven innocent</b> — which is why the validator (§<a href="#proof">10</a>) gets built before the
+      signal.
+    </div>
+  </div>
+</section>
+<!-- ================= MONEY ================= -->
+<section id="money">
+  <div class="wrap">
+    <div class="part-label">Part 4 · The opportunity</div>
+    <h2 class="part">The strategy, where it survives, and the money</h2>
+    <p class="lead-in">Given the tool and the evidence, which market do you actually test, and how much money is
+      realistically in it? The rule that governs everything: <b>an edge only survives where arbitrage is hard.</b></p>
+
+    <h3 class="sub"><span class="n">4.1</span>The rule — edge lives where attention is scarce and arbitrage is costly</h3>
+    <div class="box def"><div class="bt">▸ In plain English — limits to arbitrage</div>
+      <p>If a mispricing were easy to exploit, a hedge fund already would have, and it'd be gone. So durable edges hide
+        where exploiting them is <em>hard</em>: small stocks with wide spreads, names too illiquid to size up, positions
+        you can't easily short, and horizons long enough that you carry real risk while you wait. This is not a bug —
+        <b>the difficulty is the moat.</b> It's also the trap: the same illiquidity that preserves the edge is what eats
+        it in costs. Your job is to find the sweet spot — links diffuse slowly enough to trade, in names liquid enough to
+        trade cheaply.</p>
+    </div>
+    <p>Three conditions must all hold: <b>(1)</b> limits to arbitrage (small, low-coverage names); <b>(2)</b> slow
+      information diffusion (the drift lasts weeks — documented for indirect links); <b>(3)</b> a horizon of weeks to
+      months, where you're not competing with the HFT firms who own the sub-second game. Your 1–2 month repercussion
+      play sits in exactly this window.</p>
+
+    <h3 class="sub"><span class="n">4.2</span>The market menu — ranked</h3>
+    <div class="mkt">
+      <div class="head"><h4>Economic-link / supply-chain spillovers, small-mid-cap</h4><span class="rank">#1 — your target</span></div>
+      <div class="body">The thesis market. Trade the small linked neighbour (the supplier, the geographic peer), not the
+        Fortune-500 name whose news is already priced. Slow diffusion + low attention + weeks-long horizon = the three
+        conditions met.</div>
+      <div class="facts">
+        <div class="f"><div class="fl">Universe</div><div class="fv">~1,500 US small-mid caps</div></div>
+        <div class="f"><div class="fl">Why edge survives</div><div class="fv">Nobody covers the neighbour</div></div>
+        <div class="f"><div class="fl">Capacity</div><div class="fv">~$30–150M</div></div>
+        <div class="f"><div class="fl">Difficulty</div><div class="fv">High (the whole doc)</div></div>
+      </div>
+    </div>
+    <div class="mkt">
+      <div class="head"><h4>Post-earnings-announcement drift on linked firms</h4><span class="rank">#2</span></div>
+      <div class="body">A clean, dated shock (the customer's earnings) with a known slow reaction in the linked supplier.
+        Easiest to define an event window around; a good first sub-test.</div>
+      <div class="facts">
+        <div class="f"><div class="fl">Why edge survives</div><div class="fv">Attention lag on the neighbour</div></div>
+        <div class="f"><div class="fl">Horizon</div><div class="fv">4–8 weeks</div></div>
+        <div class="f"><div class="fl">Difficulty</div><div class="fv">Medium</div></div>
+      </div>
+    </div>
+    <div class="mkt">
+      <div class="head"><h4>Corporate credit / high-yield of linked firms</h4><span class="rank">#3</span></div>
+      <div class="body">Ripples show up in spreads before equity sometimes; but data and shorting are harder for a solo
+        researcher. Park for later.</div>
+      <div class="facts">
+        <div class="f"><div class="fl">Difficulty</div><div class="fv">High (data access)</div></div>
+      </div>
+    </div>
+    <div class="mkt">
+      <div class="head"><h4>Liquid mega-caps intraday · major-pair FX</h4><span class="rank">skip</span></div>
+      <div class="body">Efficient, sub-second, owned by HFT and giant systematic funds. No room for a slow-reasoning
+        edge. Explicitly out of scope.</div>
+    </div>
+
+    <h3 class="sub"><span class="n">4.3</span>How a statistical edge becomes money — and the honest waterfall</h3>
+    <div class="eq"><span class="en">4.1</span>
+      Profit ≈ Capital × TargetVol × Sharpe<sub>net</sub>
+      <span class="where">Run <b>$50M</b> at <b>10%</b> target volatility with a <b>net</b> Sharpe of <b>1.0</b> →
+        ~$5M/yr of risk-adjusted profit. Double the Sharpe or the capital and you double the profit — but net Sharpe is
+        the hard part, and capacity caps the capital.</span>
+    </div>
+    <p>The trap is quoting the <em>gross</em> number. Here is the same ~150 bps/month walked down honestly:</p>
+    <div class="tblwrap"><table class="led">
+      <thead><tr><th>Step</th><th>bps/month</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Gross textbook alpha (pre-2005)</td><td class="tabnum mid">~150</td><td>Cohen-Frazzini, in-sample</td></tr>
+        <tr><td>After publication decay</td><td class="tabnum">~60–90</td><td>McLean-Pontiff ~58% haircut; Pinchuk says worse</td></tr>
+        <tr><td>After small-cap trading costs</td><td class="tabnum">~10–40</td><td>Wide spreads, market impact</td></tr>
+        <tr><td>After borrow / short constraints</td><td class="tabnum no">~0–25</td><td>Short leg often un-shortable</td></tr>
+        <tr><td><b>Net, realistic today</b></td><td class="tabnum no"><b>~0–25</b></td><td>The whole bet is that NEW links restore the top of this waterfall</td></tr>
+      </tbody>
+    </table></div>
+    <div class="box warn"><div class="bt">! The uncomfortable truth this waterfall tells you</div>
+      <p>The <em>mechanical, known</em> version of this trade plausibly nets to near zero. The entire project rests on
+        the LLM finding <b>new links the crowd hasn't priced</b> — restoring the top of the waterfall — <em>and</em> on
+        those links living in names liquid enough that costs don't eat the bottom. If neither holds, the honest answer
+        is "don't trade this," and the validator is what tells you so before you risk a dollar.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">4.4</span>Capacity — the ceiling on the money</h3>
+    <div class="box def"><div class="bt">▸ In plain English — why capacity is the real constraint</div>
+      <p>If your edge lives in small stocks, you can only push so much money through before your own buying moves the
+        price against you and eats the alpha. The point where your marginal trade's cost equals its expected alpha is
+        your <b>capacity</b>. For a small-cap link strategy, expect <b>tens to low-hundreds of millions</b> — enough for a
+        boutique fund or a sleeve, not a multi-billion book. That is fine: it also means the giants <em>can't be
+        bothered</em>, which is why the edge survives. Small capacity is simultaneously the ceiling and the moat.</p>
+    </div>
+    <div class="box take"><div class="bt">◆ Part 4 takeaway</div>
+      Target small-mid-cap linked names on a 4–8 week horizon. The money is real but bounded (~$30–150M capacity,
+      ~$5–11M/yr). The gross anomaly is decayed; profitability depends entirely on <b>new links + tradable names</b>,
+      which is precisely what the test must establish.
+    </div>
+  </div>
+</section>
+<!-- ================= WHAT YOU NEED ================= -->
+<section id="need">
+  <div class="wrap">
+    <div class="part-label">Part 5 · The decisions you asked about</div>
+    <h2 class="part">What you actually need — CLT, graphs, RL, Lean, explainability, world-models</h2>
+    <p class="lead-in">You listed the techniques you keep hearing about and asked, one by one, <em>do I need this?</em>
+      Here is a grounded answer for each — plain-English definition, the 2025–26 state of the art, and a blunt
+      <span class="tag need">need</span> <span class="tag nice">nice</span> <span class="tag skip">skip</span> verdict for
+      a solo MVP. The through-line: <b>your edge is economic, not architectural.</b> Two unglamorous things move the
+      needle — a structured link graph and rigorous inference. Most of the flashy stack you should admire and skip.</p>
+
+    <h3 class="sub"><span class="n">5.1</span>Statistical inference / CLT <span class="tag need">need — build first</span></h3>
+    <div class="box def"><div class="bt">▸ Plain English</div>
+      <p>A Sharpe ratio, a t-stat, a backtest return — these are <em>sample statistics</em>, not truths. The Central
+        Limit Theorem tells you they wobble, and the wobble shrinks only like 1/√(sample size). With a few years of
+        data a Sharpe of 1 often can't be told apart from 0. And if you try 100 strategy variants and keep the best,
+        its gorgeous backtest is <em>partly luck</em> — the more you try, the luckier the winner looks.</p>
+    </div>
+    <p>This is the single most important item on the list, and it is <b>non-negotiable</b>. As a solo researcher with no
+      risk committee, rigorous inference is the only thing between you and elaborate self-deception. Concretely you need:
+      <b>Fama-MacBeth + Newey-West</b> (test whether the premium is real in the cross-section, robust to correlation),
+      the <b>Deflated Sharpe Ratio</b> (haircut your Sharpe for the number of trials and non-normality), and
+      <b>Probability of Backtest Overfitting via CSCV</b> (how likely your winner is a fluke). Bailey &amp; López de
+      Prado showed that with 5 years of data, trying ~45 configurations almost <em>guarantees</em> an in-sample Sharpe
+      of 1 whose true value is 0. Track your trial count honestly. It's cheap (open-source code exists) and it's where
+      the whole literature lives.</p>
+
+    <h3 class="sub"><span class="n">5.2</span>Entity / knowledge graph <span class="tag need">need — this IS the edge</span></h3>
+    <div class="box def"><div class="bt">▸ Plain English</div>
+      <p>Make firms nodes and economic relationships edges (customer→supplier, competitor, tech-peer). If Apple reports
+        a demand shock, its suppliers should move — but prices lag, so the graph lets you trade the spillover.
+        <b>Entity resolution</b> = attaching a stable ID (LEI, PermID, ticker) so "Apple," "Apple Inc." and AAPL are one
+        node. <b>GraphRAG</b> = building a graph + summaries over a whole corpus to answer "connect-the-dots" questions
+        plain vector search can't.</p>
+    </div>
+    <p>Yes — but the tradeoff resolves cleanly, and it's important you get it right: <b>do not choose "LLM" vs "graph."
+      Use the LLM/embeddings for candidate <em>discovery</em>, and a deterministic registry for <em>resolution and
+      validation</em>.</b> Two facts pin this down: raw GPT-5 scores F=0.23 at identifying supply-chain links (so
+      LLM-only is unreliable as ground truth), while Breitung &amp; Müller show LLM embeddings <em>do</em> surface real
+      links worth testing. So build a <b>deterministic entity-resolution spine</b> (every link auditable and
+      point-in-time — without it your graph is built on hallucinated identifiers and the backtest is meaningless), seed
+      the graph with disclosed customer-supplier data, and add LLM-embedding candidate links validated out-of-sample.
+      <span class="tag skip">skip</span> full Microsoft GraphRAG for the MVP (heavy indexing cost; its strength is
+      thematic synthesis, not your need) — reach for LazyGraphRAG only later if you want corpus-level summaries.</p>
+
+    <h3 class="sub"><span class="n">5.3</span>AI agents &amp; reasoning models <span class="tag need">need (selectively)</span></h3>
+    <div class="box def"><div class="bt">▸ Plain English</div>
+      <p>Ways to make an LLM <em>do</em> things: <b>tool-use</b> (it emits <span class="mono">get_price("AAPL")</span>
+        and your code runs it), <b>ReAct</b> (Thought→Action→Observation loop), <b>reasoning models</b> (o1/R1 — trained
+        to think in a long hidden chain; more test-time compute → higher accuracy on hard problems),
+        <b>self-consistency</b> (sample many reasoning paths, take the majority vote), and <b>multi-agent debate</b>
+        (copies argue toward consensus).</p>
+    </div>
+    <p><b>Need:</b> tool-use/function-calling (the plumbing to fetch data and run <em>your own</em> validators), plus a
+      <b>reasoning model with self-consistency</b> as your signal-confidence layer — sample N rationales for a
+      directional call, use the vote-share as a soft probability. The literature specifically says the fancier schemes
+      don't beat this: <b>multi-agent debate is largely deflated</b> (2025 studies: it often fails to beat single-agent
+      chain-of-thought while burning far more compute). <span class="tag nice">nice</span> a deep-research agent as a
+      research <em>assistant</em> (drafting "why might these two firms be linked"), never as an autonomous signal source.
+      <span class="tag skip">skip</span> long-horizon autonomous loops — the frontier reliably completes only ~1 hour of
+      human-equivalent work (METR), so scope tasks small.</p>
+
+    <h3 class="sub"><span class="n">5.4</span>Explainability / interpretability <span class="tag skip">skip (as a trust mechanism)</span></h3>
+    <div class="box def"><div class="bt">▸ Plain English</div>
+      <p>Ways to see <em>why</em> a model answered: attention maps, feature attribution (SHAP/LIME), mechanistic
+        interpretability (reverse-engineering the internal algorithm), and <b>sparse autoencoders (SAEs)</b> that
+        decompose tangled activations into readable single-concept "features."</p>
+    </div>
+    <p><b>No — ex-post outcome verification is enough for a trading signal.</b> A signal's validity is settled by
+      out-of-sample PnL and the statistics in §5.1, not by understanding the model's internals. Trusting a signal because
+      you traced its circuit is a category error — and even the labs building this (Anthropic, DeepMind) have publicly
+      <em>dialled back</em> the promise: DeepMind deprioritised SAE research after SAEs underperformed simple linear
+      probes on a real task. <span class="tag nice">nice, later</span> one legitimate exception: SAE features as an
+      <em>input representation</em> for defining "similar/linked" firms beat GICS sectors in one pairs-trading paper.
+      That's using interpretability tooling as a <em>feature source</em>, not as an explanation you rely on.</p>
+
+    <h3 class="sub"><span class="n">5.5</span>Verifiable-reward RL / fine-tuning <span class="tag skip">skip for alpha</span></h3>
+    <div class="box def"><div class="bt">▸ Plain English</div>
+      <p><b>RLHF</b> = train on human preference rankings (the ChatGPT recipe). <b>RLVR</b> = replace the human with a
+        deterministic checker — reward = 1 if the math/code/SQL answer is correct (DeepSeek-R1's method).
+        <b>LoRA</b> = fine-tune cheaply by training tiny adapter matrices on one GPU.</p>
+    </div>
+    <p><b>No, not for the MVP.</b> Your bottleneck is fresh, correct information (a retrieval problem) and disciplined
+      validation (a stats problem) — neither is solved by RL. And the fatal mismatch: <b>there is no cheap deterministic
+      verifier for "was this trade right"</b> — the market takes months to grade you and the signal is noisy, so RLVR
+      (which needs a dense, cheap verifier) simply doesn't fit alpha. Worse, 2025 work shows RL mostly
+      <em>"sharpens"</em> abilities the base model already had rather than teaching new ones. <span class="tag nice">nice,
+      narrow, later</span> one defensible use: a cheap LoRA (~$15) for a <em>structured extraction</em> task — reliably
+      pulling supplier/customer relations or XBRL fields from filings (FinLoRA-style). That's a data-engineering win,
+      not an alpha engine. Note: your instinct that "verifiable = check the chain once the future arrives" is the right
+      framing — but that's an <em>ex-post evaluation</em>, not an RL training loop.</p>
+
+    <h3 class="sub"><span class="n">5.6</span>Formal verification with Lean <span class="tag skip">skip (a category error)</span></h3>
+    <div class="box def"><div class="bt">▸ Plain English</div>
+      <p>A proof assistant (Lean, Coq) lets you write math so precisely a computer mechanically checks every step; if it
+        type-checks, it's guaranteed correct. Example: prove <span class="mono">n + 0 = n</span> for all naturals.</p>
+    </div>
+    <p><b>No — and there's a principled reason, not just a budget one.</b> Formal verification proves that
+      <em>conclusions follow from axioms.</em> An investment thesis is an <em>empirical, probabilistic claim about an
+      uncertain future</em> — there are no axioms from which "AAPL will outperform" can be derived. Formalising your
+      thesis in Lean would either certify the arithmetic of your assumptions (garbage in, garbage out) or be a category
+      error. LLM+Lean <em>is</em> a real, exciting frontier (DeepMind's AlphaProof hit IMO-silver) and formal methods
+      <em>are</em> used in finance — but only for deterministic objects: exchange matching-engine correctness (Imandra),
+      contract payoff DSLs, smart-contract verification. A targeted search for "formalise a trading thesis in Lean"
+      returns nothing, because it isn't a thing. If it ever appears in your memo as a pillar, that's the load-bearing
+      caveat to cut. (Your ex-post "verifiable" idea from §5.5 is the right version of this instinct.)</p>
+
+    <h3 class="sub"><span class="n">5.7</span>World models / simulating the future <span class="tag nice">concept yes · naive no</span></h3>
+    <p>This is your original idea, so it gets its own full section later (§<a href="#vision">12</a>). The short verdict:
+      simulating likely futures as an <b>idea-generation funnel</b> is legitimate; trusting the LLM to <em>be</em> the
+      simulator is not (errors compound — the ACL-2024 world-simulator study measures GPT-4 at ~59.9% single-step
+      accuracy and notes that, by their own compounding estimate, that falls to 0.599<sup class="p">10</sup> ≈ &lt;1% over
+      10 steps; LLMs don't out-forecast elite humans; the flashiest claims are contaminated by leakage). Use it to
+      generate candidate spillover hypotheses, then validate them with §5.1.</p>
+
+    <h3 class="sub"><span class="n">5.8</span>The prioritised verdict, on one screen</h3>
+    <div class="tblwrap"><table class="led">
+      <thead><tr><th>Technique</th><th>Verdict</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Rigorous inference (Deflated Sharpe, PBO, Fama-MacBeth)</td><td><span class="tag need">need</span></td><td>Only defence against fooling yourself. Build before any signal.</td></tr>
+        <tr><td>Deterministic entity-resolution + link graph</td><td><span class="tag need">need</span></td><td>This <em>is</em> the edge; anchor LLM candidates to a registry.</td></tr>
+        <tr><td>Tool-use + reasoning model + self-consistency</td><td><span class="tag need">need</span></td><td>Fetch data, run validators, calibrate confidence.</td></tr>
+        <tr><td>LLM+search / RAG for fresh facts</td><td><span class="tag nice">nice</span></td><td>Your real information bottleneck; beats fine-tuning.</td></tr>
+        <tr><td>LLM scenario generation (idea funnel)</td><td><span class="tag nice">nice</span></td><td>Generate hypotheses, then validate. Never the alpha source.</td></tr>
+        <tr><td>Narrow LoRA for structured extraction</td><td><span class="tag nice">nice</span></td><td>~$15 data-engineering win on filings, later.</td></tr>
+        <tr><td>Multi-agent debate</td><td><span class="tag skip">skip</span></td><td>Deflated in 2025 literature; doesn't beat self-consistency.</td></tr>
+        <tr><td>Interpretability as trust mechanism</td><td><span class="tag skip">skip</span></td><td>PnL + stats is the correct verification.</td></tr>
+        <tr><td>RLVR / RLHF for alpha</td><td><span class="tag skip">skip</span></td><td>No verifier for "right trade"; mostly sharpens existing ability.</td></tr>
+        <tr><td>Lean / formal verification of theses</td><td><span class="tag skip">skip</span></td><td>Category error — can't prove a future from axioms.</td></tr>
+        <tr><td>LLM-as-world-simulator as alpha source</td><td><span class="tag skip">skip</span></td><td>Errors compound; below-human forecasting; market prices it away.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+<!-- ================= OTHER CONNECTIONS ================= -->
+<section id="connections">
+  <div class="wrap">
+    <div class="part-label">Part 6 · Beyond the supply chain</div>
+    <h2 class="part">The other links — rates, geography, politics, macro</h2>
+    <p class="lead-in">You asked whether the idea extends past supply-chain ripples to interest rates, geography,
+      politics and the like. It does — and these are exactly the <em>cross-domain</em> links §<a href="#illusion">2.1</a>
+      said an LLM is uniquely good at, because they live in narrative text, not in any industry-code table. But there's a
+      discipline: add them as <b>typed edges and conditioning variables</b>, not as a second free-floating strategy.</p>
+
+    <div class="box def"><div class="bt">▸ In plain English — two ways a "link" can enter your model</div>
+      <p><b>(1) As an edge</b> between two firms: "Firm A and Firm B both depend on Taiwanese fabs" (geographic/input
+        link) or "both are hurt by a steel tariff" (policy link). A shock to the shared exposure ripples to both.
+        <b>(2) As a conditioning variable</b> (a "regime knob"): the level of rates, or the policy-uncertainty index,
+        changes <em>how strongly</em> a given shock propagates. A demand shock ripples differently in a
+        rate-tightening regime than a loosening one. Both are legitimate; keep them separate in the model so you can
+        test each.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">6.1</span>The channels worth adding — and where the data is</h3>
+    <div class="tblwrap"><table class="led">
+      <thead><tr><th>Channel</th><th>What ripples</th><th>Free data source (point-in-time)</th></tr></thead>
+      <tbody>
+        <tr><td>Interest rates / macro regime</td><td>A shock's pass-through to margins &amp; discount rates depends on the rate &amp; credit regime</td><td><b>US Treasury</b> (yield curve, public domain); <b>ALFRED</b> for vintage macro (see below)</td></tr>
+        <tr><td>Geographic exposure</td><td>Shared region → shared shock (tariffs, FX, disaster, sanctions)</td><td><b>10-K geographic segments</b> (EDGAR XBRL, ASC 280) — coarse but free &amp; PIT</td></tr>
+        <tr><td>Policy / political risk</td><td>Regulation, tariffs, elections re-rate whole exposure baskets</td><td><b>EPU index</b> (Baker-Bloom-Davis), <b>Trade Policy Uncertainty</b>, <b>Geopolitical Risk (GPR) index</b> — all free</td></tr>
+        <tr><td>Trade / tariff lines</td><td>A tariff on component X hits every firm that imports X</td><td><b>USITC DataWeb</b>, <b>US Census trade</b>, <b>UN Comtrade</b> — public domain</td></tr>
+        <tr><td>Geopolitical events</td><td>Conflict, export bans, disasters as shock triggers</td><td><b>GDELT</b> (events + themes, 15-min, free, ML-OK)</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="box warn"><div class="bt">! The one macro trap that will silently ruin your backtest — vintages</div>
+      <p>Macro series like GDP, payrolls and CPI are <em>revised</em> after release. If your 2018 backtest uses today's
+        revised GDP number, you're using data that <b>did not exist in 2018</b> — instant look-ahead leakage, and it
+        looks like alpha. The fix is <b>ALFRED (Archival FRED)</b>, which stores every historical <em>vintage</em>: you
+        query "what did the number look like <em>as of</em> that date." Route every revised series through ALFRED; use
+        latest-value only for things that are never revised (rates, FX, spreads). Also note: <b>plain FRED's terms
+        forbid using its data to train ML/LLMs</b> — use FRED numbers as cited model <em>inputs</em>, pull training-grade
+        history from the primary agencies.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">6.2</span>The discipline — don't let scope explode</h3>
+    <p>Each new channel is a new set of trials, and §5.1 taught you what trials do to your Sharpe. The right way to add
+      rates/geo/politics is <b>pre-committed and typed</b>: decide the edge types and conditioning variables
+      <em>before</em> you look at returns, register them, and test whether each adds predictive power <em>marginal to</em>
+      the supply-chain core. If a channel doesn't earn its keep after the deflation penalty, drop it. The goal is one
+      richer graph, not five strategies you'll be tempted to cherry-pick among.</p>
+    <div class="box take"><div class="bt">◆ Part 6 takeaway</div>
+      Rates, geography and politics are real spillover channels and exactly the cross-domain, narrative-hidden links an
+      LLM sees that tables don't — a genuine reason the LLM approach could beat FactSet's supply-chain-only graph. Add
+      them as <b>typed edges + regime conditioners</b>, all from free point-in-time public data, all pre-committed, all
+      tested for marginal value. Vintages (ALFRED) are non-negotiable.
+    </div>
+  </div>
+</section>
+<!-- ================= DATA ================= -->
+<section id="data">
+  <div class="wrap">
+    <div class="part-label">Part 7 · The raw material</div>
+    <h2 class="part">The data survey — what you can get, and what it costs</h2>
+    <p class="lead-in">You wanted a survey of data sources: prices, the entity graph, news, past filings, quarterly
+      reports. Here it is, filtered by the two things that actually decide whether a backtest is honest: is it
+      <b>survivorship-bias-free / point-in-time (PIT)</b>, and <b>are you legally allowed to train a model on it</b>.
+      The headline: you can build a genuinely clean MVP for <b>~$0–100/month</b> on public-domain data — and the biggest
+      hidden risk isn't cost, it's licensing.</p>
+
+    <div class="box def"><div class="bt">▸ Two filters that override everything else</div>
+      <p><b>Point-in-time (PIT) / survivorship-free:</b> the data must reflect what was <em>knowable on the day</em> and
+        must include companies that later went bankrupt or were delisted. A dataset that quietly drops dead companies,
+        or that shows <em>restated</em> financials, will manufacture fake alpha. <b>ML/training licence:</b> most cheap
+        and academic data forbids training or trading a commercial model on it. A backtest you build for $50/month can
+        become a six-figure licence bill the day it goes live.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">7.1</span>Prices &amp; fundamentals</h3>
+    <div class="tblwrap"><table class="led">
+      <thead><tr><th>Source</th><th>Cost</th><th>PIT / survivorship</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>CRSP + Compustat (via university WRDS)</td><td>Inst. (~free w/ WRDS seat)</td><td class="yes">Gold standard (use Compustat <em>PIT/Snapshot</em>)</td><td>Best if you have academic access; <b>forbids live commercial trading</b></td></tr>
+        <tr><td><b>Sharadar</b> (Nasdaq Data Link)</td><td class="tabnum">~$30–45/mo</td><td class="yes">Yes — <span class="mono">datekey</span> filing-date stamp</td><td><b>Best affordable PIT fundamentals</b>; personal licence permits research ML, no redistribution</td></tr>
+        <tr><td><b>Norgate</b></td><td class="tabnum">~$270–630/yr</td><td class="yes">Survivorship-free + <em>PIT index constituents</em></td><td><b>Best affordable clean prices &amp; unbiased universes</b></td></tr>
+        <tr><td>Polygon (now "Massive")</td><td class="tabnum">$29–199/mo</td><td class="mid">Buildable; fundamentals not PIT-documented</td><td>Good prices/flat-files; fundamentals weak</td></tr>
+        <tr><td>yfinance / Alpha Vantage</td><td>Free / $50</td><td class="no">Survivorship-biased, restated</td><td>Prototyping only — never for rigorous backtests</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3 class="sub"><span class="n">7.2</span>The entity / supply-chain graph — the scarce asset</h3>
+    <p>The <em>edge list</em> (who links to whom) is what's valuable; the text and returns to propagate are cheap. Paid
+      vendors sell a clean edge list; free sources make you build one — which, per the whole thesis, is where your edge
+      lives anyway.</p>
+    <div class="grid2">
+      <div class="box work"><div class="bt">▸ Paid (clean edges, licence-restricted)</div>
+        <ul class="clean step" style="margin:0">
+          <li><span class="ic">›</span><span><b>FactSet Revere</b> — analyst-curated customer/supplier/competitor edges with revenue-dependency, &gt;144k relationships. Via WRDS. Research-only.</span></li>
+          <li><span class="ic">›</span><span><b>Bloomberg SPLC</b> — 500k+ relationships to 2006, but <em>systematic extraction is prohibited</em>. Eyeball only.</span></li>
+          <li><span class="ic">›</span><span><b>Compustat Segment "Customer"</b> — the <em>exact</em> Cohen-Frazzini dataset; customer stored as free-text name (you must match it).</span></li>
+          <li><span class="ic">›</span><span><b>S&amp;P Capital IQ + Panjiva</b> — adds bill-of-lading/customs shipment data (real observed trade flows); most budget-negotiable to go live.</span></li>
+        </ul>
+      </div>
+      <div class="box good"><div class="bt">✓ Free / DIY (build it — all ML-trainable)</div>
+        <ul class="clean ok" style="margin:0">
+          <li><span class="ic">›</span><span><b>SEC 10-K "significant customers"</b> (Reg S-K / ASC 280) — the free version of the Compustat file. XBRL gives the ≥10% magnitude; LLM/NER names the counterparty. Public domain.</span></li>
+          <li><span class="ic">›</span><span><b>13F co-holdings</b> — manager×security → security×security co-ownership graph (a soft attention channel), 45-day lag.</span></li>
+          <li><span class="ic">›</span><span><b>PatentsView</b> — patent-citation / technology-proximity edges, free bulk.</span></li>
+          <li><span class="ic">›</span><span><b>Wikidata (CC0) + GLEIF LEI (CC0)</b> — parent/subsidiary rollup to the tradable parent; free to train &amp; redistribute.</span></li>
+          <li><span class="ic">›</span><span><b>GDELT GKG</b> — news co-mention edges (high recall, low precision; needs a name→ticker gazetteer).</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="box def"><div class="bt">▸ The identity spine — the boring piece that makes it all valid</div>
+      <p>Every link is only as trustworthy as your ability to say <em>which</em> firm it points to. Use SEC
+        <span class="mono">company_tickers.json</span> (ticker↔CIK↔name, free) as the backbone, add GLEIF LEI for
+        parent/subsidiary hierarchy, resolve messy names via Wikidata aliases, and map CUSIP↔ticker with <b>OpenFIGI</b>
+        (free — never redistribute raw CUSIPs, they're proprietary). Point72's CTO called this "the hidden iceberg" —
+        ~6 months of work normalising aliases. Budget for it; it's not glamorous and it's not optional.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">7.3</span>News archives (the point-in-time clock)</h3>
+    <div class="tblwrap"><table class="led">
+      <thead><tr><th>Source</th><th>Depth / PIT</th><th>Cost &amp; ML licence</th></tr></thead>
+      <tbody>
+        <tr><td><b>GDELT</b></td><td class="yes">Events to 1979, GKG realtime 2015+, effectively PIT</td><td class="yes">Free, ML-OK — but metadata + tone + URLs, <em>not</em> article bodies</td></tr>
+        <tr><td>RavenPack / Bigdata.com</td><td class="yes">Structured, PIT to 2000</td><td class="mid">Via WRDS (~$20–40k academic); best-fit but pricey</td></tr>
+        <tr><td>Dow Jones Factiva</td><td class="yes">Deep full-text + backtest flat files</td><td class="mid">8,000+ sources now <em>licensed for GenAI</em> — best licence story</td></tr>
+        <tr><td>Tiingo News</td><td class="mid">Cleanest PIT hygiene (<span class="mono">crawlDate</span>) but 3-mo self-serve</td><td class="tabnum">$30/mo</td></tr>
+        <tr><td>Benzinga</td><td class="mid">Clean full-text, ticker-tagged, PIT forward</td><td class="yes">Licence cleanly permits commercial quant use</td></tr>
+        <tr><td>Reddit / StockTwits</td><td class="no">Survivorship-biased; APIs closed</td><td class="no"><b>Reddit forbids ML training</b> — avoid</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3 class="sub"><span class="n">7.4</span>Filings, fundamentals &amp; transcripts — SEC EDGAR is the spine</h3>
+    <div class="box good"><div class="bt">✓ SEC EDGAR — free, PIT-clean, ML-unrestricted, public domain</div>
+      <p style="margin-bottom:8px">The one large source that is simultaneously free, point-in-time, and legal to train
+        on and trade. Build all your filings and fundamentals here:</p>
+      <ul class="clean ok" style="margin:0">
+        <li><span class="ic">›</span><span><b>XBRL Frames API</b> — one financial concept across <em>all</em> companies for one period: your cross-sectional factor pull, in one call.</span></li>
+        <li><span class="ic">›</span><span><b>8-K</b> — fastest structured shock signal (material events + earnings, within 4 business days, before the 10-Q).</span></li>
+        <li><span class="ic">›</span><span><b>10-K / 10-Q</b> — full financials, business description, customer concentration, geographic &amp; operating segments.</span></li>
+        <li><span class="ic">›</span><span><b>PIT gotcha:</b> the Company Facts API returns the <em>latest</em> value for a period — to avoid restatement leakage, read the value <em>as originally filed</em>, and watch 10-K/A amendments.</span></li>
+      </ul>
+    </div>
+    <p><b>Earnings-call transcripts</b> are where licensing bites — this is <em>not</em> government data. FMP (~$29+/mo,
+      ~30yr) is the cheap option but <em>personal-use-only</em>; commercial/ML use needs a negotiated agreement. The
+      academic-standard corpus is LSEG StreetEvents (licensable for ML if budget allows). A Terminal or personal API
+      plan never grants ML-training rights — negotiate in writing.</p>
+
+    <h3 class="sub"><span class="n">7.5</span>The recommended leakage-free starter stack</h3>
+    <div class="box take"><div class="bt">◆ Build the MVP entirely on these — all free/cheap, all PIT-capable, all ML-trainable</div>
+      <div class="tblwrap" style="margin:10px 0 0"><table class="led">
+        <thead><tr><th>Layer</th><th>Source</th><th>Cost</th></tr></thead>
+        <tbody>
+          <tr><td>Prices + universe</td><td>Norgate (survivorship-free + PIT constituents) and/or Sharadar SEP</td><td class="tabnum">~$270–630/yr or ~$15/mo</td></tr>
+          <tr><td>Fundamentals (PIT)</td><td>Sharadar SF1 — or free SEC EDGAR XBRL (read as-filed)</td><td class="tabnum">~$30/mo or free</td></tr>
+          <tr><td>Filings + shocks</td><td>SEC EDGAR (8-K/10-K/10-Q, Frames, bulk zips)</td><td class="yes">Free</td></tr>
+          <tr><td>Entity / link graph</td><td>10-K concentration + 13F + Wikidata + GLEIF + PatentsView, glued on CIK / OpenFIGI</td><td class="tabnum">~$0–50/mo (BigQuery)</td></tr>
+          <tr><td>News (PIT clock)</td><td>GDELT (free, ML-OK); prototype forward with Tiingo/Benzinga</td><td class="tabnum">Free / ~$30/mo</td></tr>
+          <tr><td>Macro / geo / politics</td><td>US Treasury + ALFRED vintages + EPU/GPR/TPU + USITC/Comtrade + GDELT</td><td class="yes">Free</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="box warn"><div class="bt">! The single biggest risk — the research vs. commercial licence gap</div>
+      <p>Nearly every cheap or WRDS-accessible source that would make this work — Sharadar personal, FMP transcripts,
+        RavenPack/Compustat/FactSet via WRDS, most news APIs, and even <b>FRED (explicitly bars ML/LLM training)</b> —
+        permits <em>internal research</em> but <b>forbids training or running a commercial alpha model and redistributing
+        derived data</b>. Mitigation, and it's a real design constraint: build the MVP entirely on genuinely
+        unrestricted public-domain sources — <b>SEC EDGAR, GDELT, Treasury/BEA/BLS-vintage + EPU/GPR,
+        Wikidata/GLEIF/PatentsView</b> — which you can legally train on, redistribute, and eventually trade. Treat every
+        paid/WRDS source as <em>prototype-validation only</em> until a commercial contract is in place.</p>
+    </div>
+  </div>
+</section>
+<!-- ================= SYSTEM DESIGN ================= -->
+<section id="system">
+  <div class="wrap">
+    <div class="part-label">Part 8 · The build</div>
+    <h2 class="part">System design — the graph, the corpus, the signal, the software</h2>
+    <p class="lead-in">You sketched the architecture yourself and it's essentially right: <em>a deterministic graph of
+      entities; a corpus of all past news, filings and quarterly reports structured back to those entities; a signal
+      processed from it.</em> This section makes that concrete — what each part is, what the LLM does versus what plain
+      code does, and what to build versus buy.</p>
+
+    <h3 class="sub"><span class="n">8.1</span>Why a graph + LLM hybrid — not a prompt, not a crowd of agents</h3>
+    <div class="tblwrap"><table class="led">
+      <thead><tr><th>Approach</th><th>What it is</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>Pure prompting</td><td>"Here's the news, LLM, what stocks move?"</td><td class="no">Weakest — no memory, no audit trail, max leakage, invents links</td></tr>
+        <tr><td>RAG over a corpus</td><td>Retrieve relevant docs, then ask the LLM</td><td class="mid">Partial — good for facts, but no explicit link structure to test</td></tr>
+        <tr><td>Agent-based market sim</td><td>Crowds of LLM "traders/firms" interacting</td><td class="no">Wrong tool — errors compound, diversity collapses, un-backtestable</td></tr>
+        <tr><td><b>Knowledge-graph + LLM hybrid</b></td><td>LLM proposes typed edges on a deterministic entity graph; code propagates &amp; scores</td><td class="yes"><b>Best</b> — auditable, testable, PIT, leakage-controllable</td></tr>
+      </tbody>
+    </table></div>
+    <div class="box def"><div class="bt">▸ The division of labour — LLM vs deterministic code</div>
+      <p>The design principle that keeps you honest: <b>the LLM does the fuzzy language work; deterministic code does
+        everything numeric, dated, and auditable.</b> The LLM reads text and proposes "A → B, type = input-supplier,
+        direction = cost-increase, confidence = 0.7." <em>Code</em> resolves A and B to stable IDs, checks the edge
+        against disclosed facts, stamps it with the as-of date, propagates the shock along the graph, ranks the names,
+        applies risk controls, and runs every statistical test. If a number can be computed deterministically, it must
+        be — never ask the LLM to do arithmetic you can audit.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">8.2</span>The pipeline, end to end</h3>
+    <ul class="clean step">
+      <li><span class="ic">1</span><span><b>Ingest &amp; resolve</b> <span class="dim">(code):</span> pull filings (EDGAR)
+        and news (GDELT); resolve every mentioned entity to a stable ID via the identity spine (§7.2).</span></li>
+      <li><span class="ic">2</span><span><b>Build the graph</b> <span class="dim">(LLM + code):</span> seed hard edges from
+        disclosed ≥10% customers; LLM proposes additional typed, directional candidate edges from text; code validates,
+        dates, and weights them. Every edge carries an <b>as-of date</b> — the #1 backtest killer if missing.</span></li>
+      <li><span class="ic">3</span><span><b>Detect the shock</b> <span class="dim">(code + LLM):</span> an 8-K, an earnings
+        surprise, a news event on a source node. LLM classifies the shock <em>type</em> and sign.</span></li>
+      <li><span class="ic">4</span><span><b>Propagate the ripple</b> <span class="dim">(LLM-scored, code-executed):</span> for
+        each neighbour, estimate the sign and magnitude of the fundamental effect (units, margin, EPS) — and let
+        confidence <em>decay with graph distance</em> (2nd hop less certain than 1st).</span></li>
+      <li><span class="ic">5</span><span><b>Score vs consensus</b> <span class="dim">(code):</span> compare the implied
+        fundamental change to the current analyst consensus. The <em>gap</em> is the tradable signal — the market hasn't
+        repriced yet.</span></li>
+      <li><span class="ic">6</span><span><b>Construct the portfolio</b> <span class="dim">(code):</span> rank, neutralise
+        risk factors jointly (not sequentially), size by confidence and liquidity, cap turnover.</span></li>
+      <li><span class="ic">7</span><span><b>Validate relentlessly</b> <span class="dim">(code):</span> every leakage and
+        significance test in §<a href="#proof">10</a>, on every run.</span></li>
+    </ul>
+
+    <h3 class="sub"><span class="n">8.3</span>The corpus — "structured back to the entities"</h3>
+    <p>Your instinct to keep a corpus of all past news/filings <em>indexed to entities</em> is correct, with one
+      refinement: the unit of storage is the <b>(event, company, timestamp) tuple</b>, not "one file per company." For
+      each event, freeze the information set <em>exactly as it existed at that timestamp</em> — the graph as-of then, the
+      company's state, the evidence text, the LLM's estimated response and confidence, the consensus at the time, and
+      later, the realised outcome. This <b>event panel</b> is what you run statistics on, and freezing it per-event is
+      what prevents look-ahead leakage from creeping in through a "helpfully updated" field.</p>
+    <div class="box def"><div class="bt">▸ Handling new / sparse-history companies — shrinkage</div>
+      <p>You don't need 10–20 years per stock. Use <b>cross-sectional learning</b>: a newly-public specialty
+        manufacturer inherits priors from peers with similar industry, customer concentration and input exposure.
+        Formally, <span class="mono">estimate = λ·(company-specific) + (1−λ)·(peer prior)</span>, with λ small when
+        history is short and rising as evidence accumulates — the same shrinkage logic used to tame noisy beta
+        estimates.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">8.4</span>Methodology — the shape of the test</h3>
+    <ul class="clean step">
+      <li><span class="ic">›</span><span><b>Cross-sectional panel, not one model per firm.</b> Pool all events; learn the
+        response function across the panel.</span></li>
+      <li><span class="ic">›</span><span><b>Time split, never random split.</b> Train on the earliest period, validate on
+        the middle, and keep the most recent period <em>completely untouched</em> for one final test.</span></li>
+      <li><span class="ic">›</span><span><b>Abnormal returns via CAR</b> (cumulative abnormal return — the stock's move
+        minus what its risk factors predict), with Fama-MacBeth t-stats computed on <em>events</em>, not rows.</span></li>
+      <li><span class="ic">›</span><span><b>Purge &amp; embargo</b> around each event so overlapping windows don't leak.</span></li>
+      <li><span class="ic">›</span><span><b>Beat every baseline that's simpler than you</b> (next box) — the bar for "the
+        LLM added something."</span></li>
+    </ul>
+    <div class="box warn"><div class="bt">! The baselines you MUST beat (or the complexity isn't earning its keep)</div>
+      <ul class="clean no" style="margin:0">
+        <li><span class="ic">1</span><span>Customer-momentum only (the FactSet-style signal).</span></li>
+        <li><span class="ic">2</span><span>Network-centrality-weighted customer momentum.</span></li>
+        <li><span class="ic">3</span><span>The shared-analyst factor (§2.2) — your links must be marginal to this.</span></li>
+        <li><span class="ic">4</span><span>A single LLM + RAG summary with no explicit graph propagation.</span></li>
+        <li><span class="ic">5</span><span>The graph with direct (1-hop) effects only — does multi-hop actually add value, or just noise?</span></li>
+      </ul>
+    </div>
+
+    <h3 class="sub"><span class="n">8.5</span>Build vs buy — what quants have, and what you can assemble fast</h3>
+    <div class="grid2">
+      <div class="box good"><div class="bt">✓ Build (fast, from open-source)</div>
+        <ul class="clean ok" style="margin:0">
+          <li><span class="ic">›</span><span><b>Research/stats:</b> pandas, numpy, statsmodels, scipy — Fama-MacBeth, Newey-West, everything in §10.</span></li>
+          <li><span class="ic">›</span><span><b>Factor/signal eval:</b> alphalens-reloaded (IC, decay, quantile returns).</span></li>
+          <li><span class="ic">›</span><span><b>Backtest:</b> vectorbt or bt for vectorised portfolio sorts; add a square-root market-impact cost model.</span></li>
+          <li><span class="ic">›</span><span><b>Overfitting guards:</b> Deflated Sharpe + PBO/CSCV (pypbo).</span></li>
+          <li><span class="ic">›</span><span><b>Graph:</b> networkx (or Neo4j if it grows); DuckDB/BigQuery for the event panel.</span></li>
+          <li><span class="ic">›</span><span><b>LLM layer:</b> an open-weight model (Gemma / Qwen) via a normal inference server; self-consistency sampling.</span></li>
+        </ul>
+      </div>
+      <div class="box work"><div class="bt">▸ Buy (don't rebuild)</div>
+        <ul class="clean step" style="margin:0">
+          <li><span class="ic">›</span><span><b>Data, not infrastructure.</b> Buy clean PIT prices (Sharadar/Norgate) and, later, a clean edge list (FactSet) — these take years to build well.</span></li>
+          <li><span class="ic">›</span><span><b>Don't</b> buy a backtest "platform" or a black-box signal product — you need to control and audit every step for leakage.</span></li>
+          <li><span class="ic">›</span><span><b>Don't</b> adopt MiroFish as a dependency (§12) — AGPL + qualitative-only output. Borrow the <em>architecture</em>, not the code.</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="box take"><div class="bt">◆ Part 8 takeaway</div>
+      A solo researcher can stand up this entire stack from open-source libraries in weeks — the hard part is never the
+      software, it's the <b>data discipline (PIT, entity resolution, leakage control)</b> and the <b>validation</b>. Build
+      the pipeline so the LLM only ever proposes fuzzy language structure and deterministic code owns every number, date,
+      and test.
+    </div>
+  </div>
+</section>
+<!-- ================= PROOF ================= -->
+<section id="proof">
+  <div class="wrap">
+    <div class="part-label">Part 9 · The proof</div>
+    <h2 class="part">Proving it's real — metrics, significance, and the leakage gauntlet</h2>
+    <p class="lead-in">This is where projects like yours live or die. A plausible narrative is not evidence. This section
+      is the machinery that separates a real signal from luck and from the model cheating off its own memory — and it's
+      the part you build <em>first</em>, before any signal exists.</p>
+
+    <h3 class="sub"><span class="n">9.1</span>The metrics, defined</h3>
+    <div class="box def"><div class="bt">▸ Information Coefficient (IC) — is the ranking any good?</div>
+      <p>The IC is the rank correlation between your predicted ranking of stocks and their actual next-period returns.
+        <b>+1</b> = perfect, <b>0</b> = coin flip. <b>Is a small number good?</b> Yes — real single-name equity ICs are
+        tiny, typically <b>0.02–0.05</b>. That sounds like nothing, but repeated across hundreds of names and many
+        periods, an IC of 0.03 is a genuine, tradable edge. Anything above ~0.1 on a real single-name signal is a red
+        flag for leakage, not a triumph.</p>
+    </div>
+    <p>Alongside IC: the <b>net long-short return and Sharpe</b> (after costs), <b>turnover</b> (how often you trade —
+      the cost driver from §2.3), and the <b>decay curve</b> (how fast the edge fades after the signal fires — if it's
+      gone in two days you can't trade the 4–8 week horizon).</p>
+
+    <h3 class="sub"><span class="n">9.2</span>Is it signal or luck? Count events, not rows</h3>
+    <div class="box def"><div class="bt">▸ The most important statistical idea in the whole document</div>
+      <p>Say a chip shortage ripples to 40 suppliers and they all drift up. That looks like 40 independent confirmations
+        of your theory. <b>It is not — it is one.</b> One shock hit 40 correlated names. Treating them as 40 independent
+        data points is like judging a coach by the 11 players on the field as if each were a separate season. The honest
+        count is the number of <em>independent shocks</em>, E — and that is a much smaller, more sobering number. This is
+        why you run <b>Fama-MacBeth</b> (estimate the effect period-by-period, then test the <em>series of estimates</em>)
+        rather than pooling every stock-row into one regression that pretends they're independent.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">9.3</span>The deflated Sharpe — punishing yourself for trying many things</h3>
+    <div class="box def"><div class="bt">▸ Why your best backtest is probably too good</div>
+      <p>If you try many strategy variants and report the best one's Sharpe, you've cherry-picked the luckiest — even
+        from pure noise, the maximum of N random Sharpes grows roughly like √(2·ln&nbsp;N). The <b>Deflated Sharpe
+        Ratio</b> subtracts exactly this expected "luck bonus" for the number of trials you ran (and corrects for
+        non-normal returns). The practical rule from §5.1: honestly log every variant you test, and let the deflation
+        haircut your headline number. This is also the single strongest argument for building <b>one</b> pre-committed
+        strategy rather than fishing — fishing inflates N and destroys your own significance.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">9.4</span>Do you even have enough data? An honest power analysis</h3>
+    <p>The naive calculation (treat every stock-row as independent) says you need ~8,700 observations and you have
+      plenty. That's the trap from §9.2. Deflating for the fact that names <em>within a shock</em> are correlated, the
+      real requirement is in <b>independent shocks E</b>:</p>
+    <div class="eq"><span class="en">9.1</span>
+      E ≈ <span class="frac"><span>(z<sub>α</sub> + z<sub>β</sub>)<sup class="p">2</sup></span><span>(IC information-ratio)<sup class="p">2</sup></span></span>
+      <span class="where">To detect an IC of ~0.03 with normal confidence you need on the order of <b>~200 clean,
+        independent shocks</b>. The uncomfortable arithmetic: because you must test <em>strictly post-cutoff</em>
+        (§3.4), the realistic clean count is more like <b>E ≈ 50–120</b> — squarely in or near the "can't distinguish
+        from luck" zone. <b>This is the fragile heart of the whole project</b>, and you must confront it before
+        trading, not after.</span>
+    </div>
+    <div class="box def"><div class="bt">▸ How to live with a small E — narrow in scope, wide in the panel</div>
+      <p>You can't manufacture more history, but you can make each shock count for more: pick a <em>narrow, well-defined
+        shock type</em> (e.g. major-customer earnings surprises) so the events are clean and comparable, then widen the
+        <em>panel</em> of linked names per shock so each event is richly measured. And forward-test live: every month
+        that passes adds fresh, uncontaminated shocks to E — the most credible evidence of all.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">9.5</span>The leakage gauntlet — six falsification tests</h3>
+    <p>Treat every positive result as guilty of leakage until it survives all six. Each is a specific way to try to
+      <em>break</em> your own signal:</p>
+    <div class="tblwrap"><table class="led">
+      <thead><tr><th>Test</th><th>What it checks</th><th>Pass = </th></tr></thead>
+      <tbody>
+        <tr><td>Anonymisation delta</td><td>Replace "Apple" with "Company 7" — does the edge survive?</td><td class="yes">Reasoning, not name-recall</td></tr>
+        <tr><td>Placebo / pre-cutoff</td><td>Run on data before the model's training cutoff</td><td class="yes">Edge should be <em>weaker</em> or gone if it was memorised</td></tr>
+        <tr><td>Label shuffle</td><td>Randomly permute the outcomes</td><td class="yes">Signal must vanish (else you have a bug/overfit)</td></tr>
+        <tr><td>Lookahead-propensity</td><td>Does the edge correlate with how "memorable" a firm-date is?</td><td class="yes">No correlation = not leakage-driven</td></tr>
+        <tr><td>Orthogonality</td><td>Regress out the known anomaly + shared-analyst factor</td><td class="yes">Marginal alpha remains (it's NEW)</td></tr>
+        <tr><td>Commentary-stripping</td><td>Remove human interpretation from inputs, keep only raw facts</td><td class="yes">Edge persists on facts alone</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3 class="sub"><span class="n">9.6</span>The go / no-go decision rule</h3>
+    <div class="box good"><div class="bt">✓ Call the signal REAL only if ALL of these hold</div>
+      <ul class="clean ok" style="margin:0">
+        <li><span class="ic">1</span><span>Positive IC / net Sharpe on the <em>untouched</em> most-recent period, net of realistic costs.</span></li>
+        <li><span class="ic">2</span><span>Fama-MacBeth t-stat on <em>events</em> clears the <b>t &gt; 3</b> bar, after deflation.</span></li>
+        <li><span class="ic">3</span><span>Survives all six leakage tests, especially anonymisation and orthogonality.</span></li>
+        <li><span class="ic">4</span><span>Marginal to customer-momentum <em>and</em> the shared-analyst factor.</span></li>
+        <li><span class="ic">5</span><span>Multi-hop beats 1-hop-only (else drop the complexity).</span></li>
+        <li><span class="ic">6</span><span>Capacity and turnover leave a positive edge at a tradable size.</span></li>
+      </ul>
+      <p style="margin:10px 0 0">If the simpler customer-momentum signal does just as well — <b>use the simpler
+        system.</b> A strong result is not "the agents gave plausible answers." It is: <em>ripple model &gt; customer
+        momentum + factors + single-LLM baseline, on an untouched period, net of costs.</em></p>
+    </div>
+    <div class="box take"><div class="bt">◆ Part 9 takeaway</div>
+      Build this gauntlet before the signal. The small-E power problem is the real risk, and honesty about it — plus a
+      strict t&gt;3, deflated, leakage-tested, cost-aware bar — is what makes a "yes" believable to you, to investors,
+      and most importantly, to your future self who has to trade real money on it.
+    </div>
+  </div>
+</section>
+<!-- ================= MVP & COST ================= -->
+<section id="mvp">
+  <div class="wrap">
+    <div class="part-label">Part 10 · Execution</div>
+    <h2 class="part">The MVP plan — empty repo to go/kill in 12 weeks</h2>
+    <p class="lead-in">A concrete week-by-week path. Note the order: <b>trust before signal.</b> The leakage harness and
+      the entity spine come first, because a signal you can't trust is worse than no signal.</p>
+
+    <div class="phase"><div class="pw">Wk 0<small>data</small></div><div>Stand up the public-domain stack (§7.5): EDGAR ingest, GDELT feed, Treasury/ALFRED, the identity spine (CIK/LEI/OpenFIGI). Pin an open-weight model with a documented cutoff.</div></div>
+    <div class="phase"><div class="pw">Wk 1–2<small>rails</small></div><div>The event panel (event, company, timestamp) with as-of dates on everything. Prices/fundamentals wired in PIT. Purge/embargo plumbing.</div></div>
+    <div class="phase"><div class="pw">Wk 3–4<small>trust</small></div><div><b>Build the leakage gauntlet and stats first</b> (§9): anonymisation, placebo, label-shuffle, Fama-MacBeth, deflated Sharpe, PBO. Prove the harness catches a known-fake signal.</div></div>
+    <div class="phase"><div class="pw">Wk 5–7<small>signal</small></div><div>Seed the graph (disclosed ≥10% customers), add LLM-proposed typed edges, propagate one narrow shock type (major-customer earnings surprises), score the gap vs consensus.</div></div>
+    <div class="phase"><div class="pw">Wk 8–10<small>test the moat</small></div><div>Run the full baseline ladder (§8.4). Is the LLM graph marginal to customer-momentum and the shared-analyst factor? Does multi-hop beat 1-hop? Ablate the LLM, the graph, the mechanism classifier.</div></div>
+    <div class="phase"><div class="pw">Wk 11–12<small>decide</small></div><div>Final test on the untouched most-recent period, net of costs, against the go/no-go rule (§9.6). Write the honest verdict — including "no" if that's what the data says.</div></div>
+    <div class="phase"><div class="pw">Step 2<small>if go</small></div><div>Begin live forward-testing (the only fully-clean E), and only then consider paid data / commercial licences and capacity scaling.</div></div>
+
+    <div class="box take"><div class="bt">◆ The MVP's real deliverable is a decision, not a product</div>
+      The output of 12 weeks is a defensible yes/no on one pre-committed strategy — the thing you said you wanted: build
+      one, validate it, done. A credible "no" that saves you from trading a decayed anomaly is a successful MVP.
+    </div>
+  </div>
+</section>
+
+<!-- COST -->
+<section id="cost">
+  <div class="wide">
+    <div class="part-label">Reference · the bill</div>
+    <h2 class="part">What the POC costs in runs, tokens &amp; dollars</h2>
+    <p class="lead-in">The reassuring part: compute is not the constraint. Engineering the harness and the graph is. Move
+      the sliders to see how the run cost scales.</p>
+    <div class="calc">
+      <div>
+        <div class="ctrl"><label>Independent shocks tested <b id="v_e">120</b></label><input type="range" id="s_e" min="30" max="400" value="120" step="10"></div>
+        <div class="ctrl"><label>Self-consistency samples / call <b id="v_mc">15</b></label><input type="range" id="s_mc" min="1" max="40" value="15" step="1"></div>
+        <div class="ctrl"><label>Neighbours propagated / shock <b id="v_nb">25</b></label><input type="range" id="s_nb" min="5" max="80" value="25" step="5"></div>
+        <div class="ctrl"><label>Tokens / call (in+out) <b id="v_tok">6000</b></label><input type="range" id="s_tok" min="1000" max="20000" value="6000" step="500"></div>
+        <div class="ctrl"><label>Iteration passes over the panel <b id="v_it">8</b></label><input type="range" id="s_it" min="1" max="30" value="8" step="1"></div>
+        <div class="ctrl"><label>Self-host GPU $/hr <b id="v_gpu">2.0</b></label><input type="range" id="s_gpu" min="0.5" max="6" value="2.0" step="0.1"></div>
+        <div class="ctrl"><label>Throughput (tokens/sec, self-host)
+          <select id="s_tp"><option value="2500">Gemma/Qwen ~8-9B · ~2,500 tok/s</option><option value="1200">~14B · ~1,200 tok/s</option><option value="600">~30B · ~600 tok/s</option></select></label></div>
+      </div>
+      <div class="readout">
+        <div class="ro"><span class="rk">Total LLM calls</span><span class="rv" id="o_calls">—</span></div>
+        <div class="ro"><span class="rk">Total tokens</span><span class="rv" id="o_tok">—</span></div>
+        <div class="ro"><span class="rk">GPU-hours (self-host)</span><span class="rv" id="o_gh">—</span></div>
+        <div class="ro big"><span class="rk">Self-hosted compute cost</span><span class="rv" id="o_self">—</span></div>
+        <div class="ro"><span class="rk">If run via a frontier API <small>(~$4/M blended)</small></span><span class="rv" id="o_api">—</span></div>
+        <div class="ro"><span class="rk">Savings, self-host vs API</span><span class="rv" id="o_save">—</span></div>
+      </div>
+    </div>
+    <div class="box take" style="max-width:var(--read)"><div class="bt">◆ The bill, in words</div>
+      For a realistic POC the LLM compute is <b>hundreds to low-thousands of dollars</b>, whether self-hosted or via
+      API. Data (Sharadar/Norgate) is ~$300–700/yr. The real cost is <b>your engineering time on the harness, the
+      entity spine, and the leakage tests</b> — which is exactly where the value is, so spend it there.
+    </div>
+  </div>
+</section>
+<!-- ================= THE BIGGER GAME ================= -->
+<section id="vision">
+  <div class="wrap">
+    <div class="part-label">Part 11 · Your original instinct</div>
+    <h2 class="part">The bigger game — simulating futures, and the two projects you flagged</h2>
+    <p class="lead-in">Your first idea was bigger than link-spillover: <em>use an LLM to simulate the future, see what's
+      likely, and take bets on high-edge asymmetric scenarios.</em> You then worried — maybe it's all already in the
+      price, maybe it's an illusion. This section takes that seriously, and reads MiroFish and the MIT Population-AI
+      thesis through it.</p>
+
+    <h3 class="sub"><span class="n">11.1</span>Simulating futures vs. using exact data — is there anything there?</h3>
+    <div class="box def"><div class="bt">▸ In plain English — what "simulate the future" would even mean</div>
+      <p>Instead of reacting to a shock that already happened, you'd ask the model to roll the world forward: "given
+        today's state, enumerate the plausible branches over the next two months and their consequences." You then bet
+        where the market's implied probabilities look wrong — especially <em>asymmetric</em> spots where a cheap position
+        pays off big in a branch the market underweights.</p>
+    </div>
+    <p>The honest read has three layers:</p>
+    <ul class="clean step">
+      <li><span class="ic">1</span><span><b>As a forecaster, the LLM is not good enough to bet on directly.</b>
+        Superforecasters still beat top LLMs (p&lt;0.001 on clean benchmarks), LLMs-as-text-simulators lose the plot past
+        ~10 steps (~59.9% single-step accuracy compounds to an estimated &lt;1% over 10 steps), and several "superhuman
+        forecasting" claims turn out to be temporal leakage. So "the LLM predicts the future" is not the edge.</span></li>
+      <li><span class="ic">2</span><span><b>Your "already in the price?" worry is mostly right for <em>obvious</em>
+        scenarios.</b> Liquid options already price the branches everyone can see. If the LLM's scenario is one any analyst
+        would list, it's priced. The only room is where enumerating the branch requires <em>chaining several non-obvious
+        links</em> — which loops you straight back to the link-graph thesis: the value isn't "predict the future," it's
+        "trace a consequence the crowd hasn't traced yet."</span></li>
+      <li><span class="ic">3</span><span><b>Asymmetric bets are real but hard to harvest.</b> The mispricing you'd need
+        lives in tails, options are expensive to hold, and the branch has to actually resolve inside your horizon.
+        Possible as a <em>later</em> extension; a bad place to start because it multiplies the leakage and small-E
+        problems.</span></li>
+    </ul>
+    <div class="box good"><div class="bt">✓ The one legitimate role for simulation — an idea funnel</div>
+      <p>Use scenario generation to <em>propose</em> candidate spillover trades ("if this customer cuts orders, which
+        three under-covered suppliers are mispriced, and through which mechanism?"), then feed every candidate into the
+        §9 validator. The LLM's imagination is a hypothesis generator; the statistics are the judge. That keeps the
+        creative upside of your original idea without betting money on the model's forecasts.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">11.2</span>MiroFish — useful, but not the way it looks</h3>
+    <p>You asked about <a href="https://github.com/666ghj/MiroFish">MiroFish</a> (~74k GitHub stars). Verdict: it's a
+      slick, viral <b>social-simulation "predict anything" product</b> — GraphRAG + auto-generated agent personas + the
+      OASIS social-simulation engine + a report agent. It is <b>not a finance tool</b>: no numeric signal, no
+      backtesting, no validation, and its notion of "spillover" is <em>memetic</em> (opinions spreading among simulated
+      social-media users), not the <em>economic</em> supply-chain spillover you need. Its huge star count reflects hype,
+      not predictive validity.</p>
+    <div class="grid2">
+      <div class="box good"><div class="bt">✓ Worth borrowing (as reference)</div>
+        <ul class="clean ok" style="margin:0">
+          <li><span class="ic">›</span><span>The <b>pipeline blueprint</b>: seed-text → GraphRAG entity graph → personas → simulation → report agent. Clean module boundaries to imitate.</span></li>
+          <li><span class="ic">›</span><span><b>OASIS directly</b> (the peer-reviewed engine underneath) if you ever want to simulate news/sentiment propagation through a network.</span></li>
+          <li><span class="ic">›</span><span>The <b>GraphRAG-over-news</b> pattern — but swap their social-persona graph for your firm/supply-chain graph.</span></li>
+        </ul>
+      </div>
+      <div class="box warn"><div class="bt">✕ Don't</div>
+        <ul class="clean no" style="margin:0">
+          <li><span class="ic">✕</span><span>Adopt it as a dependency — <b>AGPL-3.0</b> (viral copyleft) is a real problem for proprietary strategy code.</span></li>
+          <li><span class="ic">✕</span><span>Trust its qualitative narrative output — you need calibrated, backtestable numbers it entirely lacks.</span></li>
+          <li><span class="ic">✕</span><span>Read the star count as evidence of anything. There's no validation behind it.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 class="sub"><span class="n">11.3</span>The MIT thesis — "Population AI" (Ayush Chopra, 2026)</h3>
+    <p>The <a href="https://iceberg.mit.edu/thesis.pdf">iceberg.mit.edu thesis</a> is Ayush Chopra's MIT Media Lab PhD,
+      <em>Population AI: Modeling Societies of Interacting Agents.</em> Its one-line thesis: <b>intelligence in a
+      population emerges not from how smart each agent is, but from how they interact.</b> It's about pandemics, supply
+      chains and labour disruption — not markets — but three of its ideas map cleanly onto yours, and its epistemic
+      posture is a gift.</p>
+    <div class="box def"><div class="bt">▸ What he actually built, and what's novel</div>
+      <p style="margin-bottom:8px"><b>Two things:</b> <b>AgentTorch</b> — an engine for agent-based simulations that are
+        both <em>massively scalable</em> (millions of agents on GPUs) and <em>differentiable</em> (the whole sim is
+        written as tensor operations, so you can take gradients through it) — and <b>Large Population Models</b>, the
+        framing that studies emergent phenomena (epidemics, supply-chain cascades, labour shifts) arising from
+        interaction, not from any one agent.</p>
+      <p style="margin-bottom:0"><b>What's genuinely novel:</b> <b>(1) differentiability at population scale</b> — the
+        real contribution: ordinary agent-based models are black boxes you calibrate by brute force; a differentiable one
+        calibrates by <em>gradient descent</em> and gives sensitivity analysis in a single pass. <b>(2) LLMs as agent
+        "cognition" showing adaptive behaviour</b> a fixed rule can't (the pandemic-fatigue result). <b>(3) archetypes</b>
+        to make LLM-agents affordable (with the caveat they re-introduce coarse assumptions). It's <em>method and
+        machinery</em> applied to pandemics/labour — <b>not</b> markets, and some widely-quoted figures I'd verify at
+        source; the technical <em>approach</em> is the solid, transferable part. <b>Open-source code:</b>
+        <a href="https://github.com/AgentTorch/AgentTorch">github.com/AgentTorch/AgentTorch</a> (Python/PyTorch,
+        AGPL-3.0 — same copyleft caveat as MiroFish; borrow the ideas, don't necessarily take it as a dependency).</p>
+    </div>
+    <div class="box def"><div class="bt">▸ The big idea (and a note on what's verified)</div>
+      <p>Model a whole population: each agent has a state, a decision rule ("cognition," which can be a frozen LLM given
+        a structured prompt), and structured interactions with neighbours ("coordination"). Because the whole simulator
+        is built to be <em>differentiable</em>, you can do fast <b>sensitivity analysis</b> — measure how the collective
+        outcome changes if you nudge an input — and calibrate the model to real data from a single pass.</p>
+      <p style="margin-bottom:0"><b>Honesty flag:</b> an earlier draft of this section attributed a named "sensitivity
+        sharing" mechanism and a vivid supply-chain "Beer Game" result (specific cost/shock numbers) to the thesis. On
+        re-checking against Chopra's published papers those specifics <em>could not be verified</em> and are removed.
+        What <em>is</em> verified appears below.</p>
+    </div>
+    <div class="box good"><div class="bt">✓ What's genuinely verified — and worth borrowing</div>
+      <ul class="clean ok" style="margin:0">
+        <li><span class="ic">1</span><span><b>The Lucas-critique argument for LLM agents (verified).</b> His papers say
+          it directly: policy/regime effects "cannot be predicted solely from historical data when agents can adapt their
+          behaviour." Models fit to the past are not regime-invariant. This is textbook economics and the principled case
+          for your "simulate a regime absent from history" instinct.</span></li>
+        <li><span class="ic">2</span><span><b>LLM agents <em>can represent</em> adaptive behaviour (verified).</b> The
+          real experiment: inject "it has been N+30 weeks of the epidemic" into agent prompts and they become
+          <em>less</em> willing to isolate, worsening the outbreak with transmissibility unchanged. That decouples
+          behaviour change from the underlying dynamics — something a fixed statistical rule can't do. Note the honest
+          scope: faithful LLM-agent sims are demonstrated only at <b>25–1,000 agents</b>.</span></li>
+        <li><span class="ic">3</span><span><b>Archetypes to scale — with a verified outperformance result.</b> You
+          can't LLM-query millions of agents, so cluster into a few representative "archetypes" and query once per type.
+          In his AAMAS-2025 paper this ran <b>8.4M agents with ~400 LLM calls</b> and <em>beat both</em> a hardcoded-rule
+          baseline <em>and</em> the naive per-agent-LLM approach at forecasting (infection error <b>95 vs 2,915 vs
+          4,312</b>; ~30× better), at ~95% less runtime. <b>Honest framing:</b> the same model (GPT-3.5) is used
+          throughout — the win is the <em>structure</em>, not a small model beating a big one — and archetypes
+          re-introduce some coarse assumptions.</span></li>
+        <li><span class="ic">4</span><span><b>The epistemic posture — build a "capability/exposure map, not a
+          forecast."</b> The thesis's applied work is framed as <em>correlational, not causal</em>, validated against
+          independent data and labelled "exposure, not outcome." That is exactly the honest framing your signal should
+          adopt — the antidote to narrative hallucination.</span></li>
+      </ul>
+    </div>
+    <div class="box warn"><div class="bt">! My idea vs. the thesis — don't confuse them</div>
+      <p style="margin-bottom:8px">The trading move I suggested — <b>propagate a firm's <em>sensitivity</em> (how its
+        EPS would move if a linked firm is shocked), not its reported level</b> — is a reasonable idea, but it is
+        <b>my</b> synthesis, <em>not</em> a mechanism the thesis provides. The thesis is about pandemics, supply chains
+        and labour; it never touches asset prices or trading.</p>
+      <p style="margin-bottom:0">And the bigger synthesis — "an LLM system would beat history-trained quant models at
+        regime changes and produce tradable alpha" — is, per the independent verification, <b>overreach / an untested
+        hypothesis.</b> The premises hold (models break at regimes; LLM agents can represent adaptation), but combining
+        them into market alpha is unproven: <em>simulating</em> an adaptation is not <em>forecasting the right one</em>,
+        markets are adversarial and reflexive (if the reasoning were reliably right, prices would already reflect it),
+        and — the crux — it <b>cannot be backtested</b>, so in its pure form it is closer to gambling than to a validated
+        edge. Treat it as a research direction, sized small, never the core.</p>
+    </div>
+
+    <div class="box take"><div class="bt">◆ Part 11 takeaway</div>
+      Your "simulate the future" instinct is right in spirit and wrong as a literal trading engine. The value isn't the
+      LLM's forecast; it's using simulation to <b>enumerate non-obvious consequence-chains as candidate trades</b>, then
+      letting the §9 statistics judge them. MiroFish gives you an architecture (not a dependency); the Population-AI
+      thesis gives you the Lucas-critique framing and proof that LLM agents can represent adaptive behaviour — plus the
+      discipline to call your output a map, not a prophecy. The regime bet is real as a <em>hypothesis</em>; keep it
+      small until forward calibration earns it more.
+    </div>
+  </div>
+</section>
+<!-- ================= PLAYBOOK ================= -->
+<section id="playbook">
+  <div class="wrap">
+    <div class="part-label">Part 12 · How you'd actually run it — and how big it gets</div>
+    <h2 class="part">The playbook: scale, the two templates, and the LLM's real edge</h2>
+    <p class="lead-in">Everything above says "what to build." This section answers the questions you actually kept
+      asking: <em>how big can this get, is it just gambling, and where does the LLM genuinely add an edge?</em> Read it
+      as the strategic capstone.</p>
+
+    <h3 class="sub"><span class="n">12.1</span>Can you be as big as the big funds? The capacity/edge law</h3>
+    <div class="box def"><div class="bt">▸ In plain English — the iron law</div>
+      <p><b>Capacity scales with market depth; edge scales inversely with how many eyes are on it.</b> You can push
+        billions through liquid markets (large-caps, futures, FX, rates) — but they're the most-watched, so the edge per
+        dollar is thin. You get a fat edge only in small, ignored corners — which can't absorb size. <b>You rarely get
+        both.</b> That is why the earlier "~$30–150M" number is a property of the <em>small-cap</em> strategy, not a
+        limit on your ambition.</p>
+    </div>
+    <div class="box warn"><div class="bt">! The tell — Renaissance's Medallion</div>
+      <p>Medallion returned ~66%/yr for 30 years — the best record in history — yet it's <b>capped at ~$10B and has
+        refused outside money since 2005.</b> Why cap the best fund ever? Its edge is in short-horizon inefficiencies
+        with hard capacity limits — push more and the trades move prices and the edge dies. The tell: RenTec's <em>other</em>
+        funds, the ones open to outsiders and built to be big, are <b>mediocre</b> — because to absorb billions they had
+        to go liquid and long-horizon, where the edge is thin. <b>Same geniuses: the small fund is spectacular, the big
+        one is average.</b> Great edge and huge AUM are usually mutually exclusive at the strategy level.</p>
+    </div>
+    <p>So how <em>are</em> the giants big? Not one huge signal — four things: <b>(1) breadth</b> (Citadel/Millennium run
+      hundreds of independent, capped "pods"); <b>(2) liquid instruments</b> (billions of capacity each); <b>(3) many
+      horizons + leverage</b>; <b>(4) diversification math</b> — dozens of modest, uncorrelated edges combine into one
+      high-Sharpe, high-capacity book. <b>Bigness = summing many capped edges, not owning one uncapped one.</b></p>
+    <div class="box good"><div class="bt">✓ Your scaling ladder — the factory is a signal <em>factory</em></div>
+      <p style="margin-bottom:8px">This reframes your asset. It isn't the one small-cap ripple trade — it's a
+        <b>machine that manufactures many decorrelated link-spillover signals.</b> That's the path to size:</p>
+      <ul class="clean ok" style="margin:0">
+        <li><span class="ic">1</span><span><b>Start small-cap</b> — highest edge, proves the machine (~$30–150M).</span></li>
+        <li><span class="ic">2</span><span><b>Widen to liquid expressions</b> of the same links — the industry-portfolio
+          version of link-spillover (Menzly-Ozbas) is the most tradable and dodges the microcap cap: same idea, 10–100×
+          capacity, lower Sharpe per unit.</span></li>
+        <li><span class="ic">3</span><span><b>Add channels, horizons, asset classes, leverage</b> (equity, credit,
+          options; the rates/geo/politics edges of §<a href="#connections">6</a>). Now capacity aggregates across many
+          bets.</span></li>
+      </ul>
+      <p style="margin:10px 0 0">Do that and there's no structural reason you can't run a multi-billion book — the size
+        comes from <b>breadth × liquidity × diversification</b>, which the factory produces.</p>
+    </div>
+    <div class="box warn"><div class="bt">! The tension in that ladder (verified, don't skip)</div>
+      <p>The <em>known, human-legible</em> link (shared-analyst / connected-firm momentum) works in <b>large-caps and
+        survives costs</b> — great for capacity. But the <em>novel, LLM-found</em> links (Breitung-Müller) so far show
+        their alpha <b>concentrated in microcaps</b>, gross of cost. So going liquid for capacity pushes you toward the
+        <em>more-competed</em> links — and your "new-links" edge must prove it still adds value there, <b>marginal to
+        the shared-analyst factor</b>. That is precisely the thing the test in §<a href="#proof">10</a> must
+        establish.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">12.2</span>Two templates for the anticipatory bet — Soros vs. Bridgewater</h3>
+    <div class="tblwrap"><table class="led">
+      <thead><tr><th></th><th>Soros</th><th>Bridgewater (Dalio)</th></tr></thead>
+      <tbody>
+        <tr><td>Style</td><td>Discretionary global macro</td><td>Systematic-discretionary macro</td></tr>
+        <tr><td>Method</td><td>"Reflexivity" — spot self-reinforcing bias→trend loops at unsustainable extremes, bet the break</td><td>Reason the cause-effect mechanism, test it across all history &amp; countries, diversify</td></tr>
+        <tr><td>Bets</td><td>Few, concentrated, huge, asymmetric ("go for the jugular")</td><td>Many small uncorrelated bets across ~150 markets ("Holy Grail" = 15+ uncorrelated streams)</td></tr>
+        <tr><td>Backtested?</td><td class="no">No — pure judgment</td><td class="mid">Reframed — stress a reasoned mechanism against every historical/global analog</td></tr>
+        <tr><td>Scales?</td><td class="no">Bet on one genius; unscalable</td><td class="yes">Institutionalisable; machine-compatible</td></tr>
+      </tbody>
+    </table></div>
+    <div class="box def"><div class="bt">▸ Bridgewater's trick for the "can't-backtest-a-regime" problem</div>
+      <p>You can't backtest "a US regime change" on 3 US examples. Their move: <b>reason the mechanism, then test it
+        across every analogous episode in all of history and every country</b> — Weimar, the 1930s, 1970s inflation,
+        every EM crisis. That converts "3 data points" into "50 regime-like episodes," and diversifying across ~150
+        markets means no single non-repeatable bet can sink the fund. That is the honest, rigorous version of the
+        anticipatory bet — and, per §<a href="#vision">11</a>, exactly what Bridgewater's AIA Labs is now trying to
+        automate with LLMs.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">12.3</span>The real LLM edge — industrialise Bridgewater's steps 1–2</h3>
+    <p>Here is the sharpest, most defensible framing of where an LLM genuinely helps. Bridgewater's method needs two
+      things done at scale: <b>(1) reason candidate cause-effect mechanisms</b>, and <b>(2) find every historical and
+      global analog of each</b>. Today those are done by armies of analysts, <em>bounded by how much humans can read
+      and remember.</em> That ceiling is exactly what an LLM removes:</p>
+    <ul class="clean step">
+      <li><span class="ic">›</span><span><b>Mechanism generation:</b> enumerate plausible "if-then-because" chains for a
+        given shock, including non-obvious cross-domain ones.</span></li>
+      <li><span class="ic">›</span><span><b>Analog mining at LLM scale:</b> scan <em>all</em> of history, in every
+        language, across every country, for episodes of the same mechanism — a breadth no human team can match.</span></li>
+    </ul>
+    <div class="box take"><div class="bt">◆ The honest one-liner</div>
+      The LLM's edge here is <b>not forecasting and not sentiment</b> — it's <b>industrial-scale mechanism-reasoning and
+      analog-mining</b> that feeds a systematic-discretionary engine. That is a real, defensible use of the tool, and
+      it's the strongest version of your "unroll the future" instinct.
+    </div>
+    <div class="box def"><div class="bt">▸ Does the MIT thesis + latest LLMs let you do what Bridgewater hasn't?</div>
+      <p><b>At the macro level — thin.</b> Bridgewater is enormous and AIA Labs is already on the LLM-reasoning path;
+        you won't out-macro them. Your opening is at the edges they're <em>not</em> pointed at: <b>(a) micro, not
+        macro</b> — firm-level, supply-chain-link regime reasoning ("this novel tariff reshapes <em>these specific</em>
+        mispriced small suppliers") rather than rates/FX/countries; <b>(b) exhaustive analog-mining</b> at a reading
+        scale even their analysts can't reach; <b>(c) differentiable agent simulation</b> (AgentTorch-style) to
+        <em>mechanically</em> test counterfactual adaptation, vs. their more hand-coded "economic machine." Related and
+        useful — a specific niche, not a moat over Bridgewater.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">12.4</span>The architecture — machine surfaces, human judges, calibration proves it</h3>
+    <p>Your own idea — <em>use the system to find candidate situations, then use humans to reason over them</em> — is
+      the right shape, and it's how the best shops (Man "human-vetted," Citadel "force multiplier," Bridgewater AIA) all
+      actually operate. It puts each side where it's strong:</p>
+    <div class="grid2">
+      <div class="box good"><div class="bt">✓ Machine = breadth</div>
+        <p style="margin:0">Scan everything, surface the novel configurations a human would never notice, trace the
+          links, and <em>structure</em> the scenario. This is what the graph/factory infrastructure is for.</p>
+      </div>
+      <div class="box good"><div class="bt">✓ Human = judgment</div>
+        <p style="margin:0">Decide whether the thesis is real, size by conviction, know when to cut. Humans still beat
+          LLMs at genuine novelty — so the human sits at the <em>judgment</em> step, not the machine.</p>
+      </div>
+    </div>
+    <div class="box def"><div class="bt">▸ Wait — isn't this backtestable? The spectrum (a correction to "you can't")</div>
+      <p style="margin-bottom:8px">Backtestability is not yes/no — it's three tiers, and Bridgewater lives in the
+        middle one:</p>
+      <ul class="clean step" style="margin:0">
+        <li><span class="ic">1</span><span><b>The factory — fully backtestable.</b> Thousands of near-independent events →
+          real statistical significance (t&gt;3, deflated Sharpe). Strong proof.</span></li>
+        <li><span class="ic">2</span><span><b>Bridgewater's regime bets — <em>weakly</em> backtestable.</b> Rare events
+          (inflation regimes, rate cycles, debt crises) recur a few times per century <em>per country</em>. The trick:
+          pool <b>analogs across all countries and history</b> → ~3 becomes ~50, enough to weakly test a reasoned
+          mechanism. But it stays weak: <em>which episodes count as analogs is a judgment call</em>, 50 heterogeneous
+          episodes can't reach t&gt;3, and you're testing an a-priori mechanism, not curve-fitting.</span></li>
+        <li><span class="ic">3</span><span><b>Truly unprecedented events — not backtestable.</b> No analog, n≈1, pure
+          reasoning — closest to gambling.</span></li>
+      </ul>
+      <p style="margin:8px 0 0">So the earlier "you can't backtest it" is strictly true only for tier 3. Most useful
+        regime bets are <b>tier 2 — rare but with analogs</b>, which is exactly why the LLM's <b>analog-mining</b> earns
+        its keep: more and better historical/global analogs <em>strengthen</em> the tier-2 test.</p>
+    </div>
+    <div class="box warn"><div class="bt">! "Am I just gambling?" — for tier 3 largely yes; for tier 2, only if you do this</div>
+      <p style="margin-bottom:8px">Even the tier-2 test is weak, so it cannot prove skill ex-ante the way the factory
+        can. Three disciplines are the only honest answer:</p>
+      <ul class="clean ok" style="margin:0">
+        <li><span class="ic">1</span><span><b>Reason the mechanism, then test across all history + all countries</b>
+          (Bridgewater's move) — the only way to get a defensible sample for a "rare" event.</span></li>
+        <li><span class="ic">2</span><span><b>Track calibration forward</b> (the superforecaster method): for every
+          call, record a probability, then score it over time. After 50–100 calls you have <em>forward, out-of-sample
+          evidence</em> of whether you actually have skill — the one honest answer to "am I gambling," obtainable without
+          a backtest. <b>Build this if you go this route.</b></span></li>
+        <li><span class="ic">3</span><span><b>Run many uncorrelated bets, sized small</b> — never a few haymakers.</span></li>
+      </ul>
+    </div>
+
+    <h3 class="sub"><span class="n">12.5</span>Which game are you in? (You said you want to trade, not sell)</h3>
+    <p>You want to <em>be the trader</em>, not sell signals or data. Good — that decides the funding, and it means
+      "VC-backable" was the wrong lens:</p>
+    <div class="tblwrap"><table class="led">
+      <thead><tr><th>If you want to…</th><th>The vehicle</th><th>Who funds it</th></tr></thead>
+      <tbody>
+        <tr><td>Sell software/data (the graph, the harness)</td><td>A fintech/data company</td><td class="yes">Classic VCs — but you can't also keep it as a secret edge</td></tr>
+        <tr><td><b>Trade it yourself and get big</b></td><td>A fund → multi-strategy platform</td><td class="mid"><b>Hedge-fund seeders, GP-stake funds, family offices, or a platform pod</b> (Millennium/Citadel/Balyasny) — <em>not</em> classic VCs</td></tr>
+        <tr><td>Both (dual-use)</td><td>A tech co that also runs an internal fund</td><td class="mid">A VC funds the product; you sell the <em>infrastructure</em>, keep the <em>signals</em> private</td></tr>
+      </tbody>
+    </table></div>
+    <div class="box def"><div class="bt">▸ The honest label for the human-in-the-loop version</div>
+      <p>The machine-surfaces/human-judges design does <b>not scale like software</b> — human judgment is capped by your
+        attention (a handful of situations, not thousands). So it is a <b>discretionary-macro business — a bet on your
+        judgment, amplified by a machine</b> — not a VC-scalable tech company and not a fully-systematic quant factory.
+        That's a legitimate, potentially huge business (it's the macro-fund model), but know which game you're in: the
+        <em>factory</em> is systematic and fundable by pods/seeders on its backtest; the <em>regime bet</em> is
+        discretionary and fundable only once forward calibration earns it a track record.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">12.6</span>Two clarifications that keep coming up</h3>
+    <div class="box def"><div class="bt">▸ "Build the simulator, don't be it" — in detail</div>
+      <p><b>Paradigm A — LLM <em>is</em> the simulator (generative).</b> You keep the world in the model's head and ask
+        it to produce each next state in words: "inventory=100, demand=50, order 30 → next state?" → it writes
+        "inventory=80…", you feed that back, ask again. <b>Why it fails:</b> each step is only ~60% right; feed its own
+        slightly-wrong output back in and errors <em>compound multiplicatively</em> (~0.6<sup class="p">10</sup> ≈ &lt;1%
+        after 10 steps). It also can't guarantee accounting identities, can hallucinate, and isn't auditable. The ACL-2024
+        study measured exactly this and found it unreliable.</p>
+      <p><b>Paradigm B — LLM <em>builds</em> the simulator (neurosymbolic).</b> The LLM's job is <em>one-time</em>: help
+        you write the explicit model — code, equations, graph, parameters. Then <em>deterministic code</em> runs it
+        forward. "Neurosymbolic" = <em>neural</em> (LLM, good at fuzzy language) + <em>symbolic</em> (explicit
+        code/logic, exact and auditable): the LLM turns messy text into symbolic structure, the engine executes it
+        reliably. <b>Why it doesn't drift:</b> the code applies the <em>same exact rules every step</em> — no per-step
+        generation error to accumulate; you can enforce identities, bounds, conservation, correct-by-construction.
+        <b>AgentTorch</b> (Chopra) is this — agents as differentiable tensor operations you can also take gradients
+        through for calibration; an LLM plugs in as <em>one component</em> (a decision rule), but the scaffolding
+        (who's linked, how state updates, how shocks propagate) is explicit code. The LLM <em>feeds</em> the simulator;
+        it isn't the simulator.</p>
+      <div class="tblwrap" style="margin:12px 0 0"><table class="led">
+        <thead><tr><th>For markets</th><th>Do this instead</th></tr></thead>
+        <tbody>
+          <tr><td class="no">"Simulate 2 months and tell me what happens to semis" (LLM-as-simulator → drift, hallucination)</td><td class="yes">Use the LLM to <b>build the pieces</b>, run them deterministically ↓</td></tr>
+          <tr><td>1 · Entity graph</td><td>LLM extracts candidate typed/directional links from text; you store them as explicit, <em>dated</em> data</td></tr>
+          <tr><td>2 · Response functions</td><td>LLM proposes "input cost +10% → supplier margin −Y bp" as a <em>parameterised rule</em>; you encode &amp; <em>calibrate it to history</em></td></tr>
+          <tr><td>3 · Propagation engine</td><td>Deterministic code walks the graph hop-by-hop, confidence decaying with distance — same rules every run, auditable, no drift</td></tr>
+          <tr><td>4 · Run &amp; validate</td><td><em>You</em> roll the deterministic model forward over scenarios and test the outputs statistically</td></tr>
+        </tbody>
+      </table></div>
+      <p style="margin:12px 0 0">This is the same LLM-vs-code split as §<a href="#system">8.1</a>, applied to
+        simulation — and it's how you legitimately "unroll the future": <b>change a knob on your deterministic model
+        (e.g. rates +200 bp) and re-run it</b>, rather than asking the LLM to hallucinate 2027.</p>
+    </div>
+    <div class="box def"><div class="bt">▸ Can Lean verify real-world / future scenarios? No.</div>
+      <p>Lean verifies that <b>conclusions follow from axioms</b> — pure logic. "2+2=4" is true by the rules and
+        machine-checkable. "AAPL will rise" is <b>not entailed by any axioms</b> — it depends on empirical facts and an
+        uncertain future, which no theorem prover can settle. Lean can confirm a <em>math proof</em> is correct or that
+        a <em>pricing formula is coded correctly</em> (deterministic, logical objects) — it cannot tell you whether a
+        scenario will happen. The right tool for "is my edge real" is <b>probabilistic/statistical validation</b>
+        (backtests, calibration), not a proof assistant. Lean stays a <span class="tag skip">skip</span>.</p>
+    </div>
+
+    <div class="box take"><div class="bt">◆ Part 12 takeaway</div>
+      You can be big — but through <b>breadth × liquidity × diversification</b>, not one perfect signal; the small-cap
+      trade is the seed, the factory is the machine. The anticipatory "regime" bet is real as a <em>hypothesis</em> and
+      the LLM's honest edge there is <b>industrialising Bridgewater's mechanism-reasoning and analog-mining</b> — run it
+      machine-surfaces / human-judges, prove skill with <b>forward calibration</b>, keep it small until it earns more.
+      Build the factory first (it's testable and it funds you); let the regime bet be the cream. And fund it the right
+      way — <b>seeders and platforms, not software VCs</b> — because you want to be the one trading.
+    </div>
+  </div>
+</section>
+
+<!-- ================= SOURCES ================= -->
+<section id="sources">
+  <div class="wide">
+    <div class="part-label">Reference</div>
+    <h2 class="part">Where each claim comes from</h2>
+    <p class="lead-in" style="max-width:var(--read)">Grouped by topic. Peer-reviewed and pre-2024 papers are solidly
+      verified; items marked <em>(working paper)</em> or <em>(preprint)</em> are not yet refereed — treat their numbers
+      as directional. A few frontier LLM-supply-chain preprints with 2026 arXiv IDs surfaced in search but could not be
+      verified to citation standard; they are described in the text but deliberately omitted here.</p>
+
+    <div class="refs" style="columns:2;column-gap:40px">
+      <p><b>Economic links &amp; anomalies</b></p>
+      <p>Cohen &amp; Frazzini, <i>Economic Links and Predictable Returns</i>, J. Finance 2008 — <a href="https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.2008.01379.x">wiley</a></p>
+      <p>Menzly &amp; Ozbas, <i>Market Segmentation &amp; Cross-predictability</i>, JF 2010 — <a href="https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.2010.01578.x">wiley</a></p>
+      <p>Cohen &amp; Lou, <i>Complicated Firms</i>, JFE 2012 — <a href="https://www.sciencedirect.com/science/article/abs/pii/S0304405X11001899">sciencedirect</a></p>
+      <p>Lee et al., <i>Technological Links &amp; Predictable Returns</i>, JFE 2019 — <a href="https://www.sciencedirect.com/science/article/abs/pii/S0304405X18303167">sciencedirect</a></p>
+      <p>Ali &amp; Hirshleifer, <i>Shared Analyst Coverage</i>, JFE 2020 — <a href="https://www.nber.org/papers/w25201">nber w25201</a></p>
+      <p>Cohen, Malloy &amp; Nguyen, <i>Lazy Prices</i>, JF 2020 — <a href="https://www.nber.org/papers/w25084">nber w25084</a></p>
+      <p>Parsons, Sabbatucci &amp; Titman, <i>Geographic Lead-Lag</i>, RFS 2020 — <a href="https://academic.oup.com/rfs/article-abstract/33/10/4721/5682420">oup</a></p>
+      <p>Hoberg &amp; Phillips, <i>Text-Based Network Industries (TNIC)</i>, JPE 2016 — <a href="https://www.nber.org/papers/w15991">nber w15991</a></p>
+      <p>Gofman, Segal &amp; Wu, <i>Production Networks &amp; Stock Returns</i>, RFS 2020 — <a href="https://academic.oup.com/rfs/article-abstract/33/12/5856/5807619">oup</a></p>
+      <p>Hong, Lim &amp; Stein, <i>Bad News Travels Slowly</i>, JF 2000 — <a href="https://www.nber.org/papers/w6324">nber w6324</a></p>
+      <p>Breitung &amp; Müller, <i>Global Business Networks</i>, JFE 2025 — <a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4395079">ssrn 4395079</a></p>
+      <p>Pinchuk, <i>Customer Momentum</i>, 2023 (working paper) — <a href="https://arxiv.org/pdf/2301.11394">arxiv 2301.11394</a></p>
+
+      <p><b>LLMs for return prediction</b></p>
+      <p>Lopez-Lira &amp; Tang, <i>Can ChatGPT Forecast Stock Price Movements?</i> (working paper) — <a href="https://arxiv.org/abs/2304.07619">arxiv 2304.07619</a></p>
+      <p>Gu, Kelly &amp; Xiu, <i>Empirical Asset Pricing via ML</i>, RFS 2020 — <a href="https://academic.oup.com/rfs/article/33/5/2223/5758276">oup</a></p>
+      <p>Ke, Kelly &amp; Xiu, <i>Predicting Returns with Text (SESTM)</i> — <a href="https://www.nber.org/papers/w26186">nber w26186</a></p>
+      <p>Kim, Muhn &amp; Nikolaev, <i>Financial Statement Analysis with LLMs</i> (arXiv version withdrawn) — <a href="https://arxiv.org/abs/2407.17866">arxiv 2407.17866</a></p>
+      <p>BloombergGPT — <a href="https://arxiv.org/abs/2303.17564">arxiv 2303.17564</a>; FinGPT — <a href="https://github.com/AI4Finance-Foundation/FinGPT">github</a></p>
+      <p>InterCorpRel-LLM (supply-chain relation extraction) — <a href="https://arxiv.org/abs/2510.09735">arxiv 2510.09735</a></p>
+
+      <p><b>Leakage &amp; memorisation</b></p>
+      <p>Lopez-Lira, Tang &amp; Zhu, <i>The Memorization Problem</i>, 2025 — <a href="https://arxiv.org/abs/2504.14765">arxiv 2504.14765</a></p>
+      <p>Glasserman &amp; Lin, <i>Assessing Look-Ahead Bias</i>, 2023 — <a href="https://arxiv.org/abs/2309.17322">arxiv 2309.17322</a></p>
+      <p>Sarkar &amp; Vafa, <i>Lookahead Bias in LLM predictions</i>, ICML 2025 — <a href="https://openreview.net/pdf?id=fn9cJkB86T">openreview</a></p>
+      <p>Ludwig, Mullainathan &amp; Rambachan, 2026 — <a href="https://www.nber.org/papers/w33344">nber w33344</a></p>
+      <p>He, Lv, Manela &amp; Wu, <i>ChronoBERT/ChronoGPT</i> — <a href="https://arxiv.org/abs/2502.21206">arxiv 2502.21206</a></p>
+
+      <p><b>Statistics &amp; overfitting</b></p>
+      <p>McLean &amp; Pontiff, <i>Does Research Destroy Predictability?</i>, JF 2016 — <a href="https://onlinelibrary.wiley.com/doi/abs/10.1111/jofi.12365">wiley</a></p>
+      <p>Harvey, Liu &amp; Zhu, <i>…and the Cross-Section of Expected Returns</i>, RFS 2016 — <a href="https://www.nber.org/system/files/working_papers/w20592/w20592.pdf">nber w20592</a></p>
+      <p>Novy-Marx &amp; Velikov, <i>A Taxonomy of Anomalies &amp; Trading Costs</i>, RFS 2016 — <a href="https://www.nber.org/system/files/working_papers/w20721/w20721.pdf">nber w20721</a></p>
+      <p>Hou, Xue &amp; Zhang, <i>Replicating Anomalies</i>, RFS 2020 — <a href="https://www.nber.org/system/files/working_papers/w23394/w23394.pdf">nber w23394</a></p>
+      <p>Bailey &amp; López de Prado, <i>Deflated Sharpe Ratio</i> — <a href="https://www.davidhbailey.com/dhbpapers/deflated-sharpe.pdf">pdf</a>; <i>Pseudo-Mathematics</i>, AMS 2014 — <a href="https://www.ams.org/notices/201405/rnoti-p458.pdf">pdf</a></p>
+      <p>Chen &amp; Zimmermann, <i>Open Source Cross-Sectional Asset Pricing</i> — <a href="https://www.openassetpricing.com/">openassetpricing.com</a></p>
+      <p>Fama &amp; MacBeth 1973; Newey &amp; West 1987 (HAC standard errors).</p>
+
+      <p><b>AI techniques</b></p>
+      <p>DeepSeek-R1 (RL reasoning) — <a href="https://arxiv.org/abs/2501.12948">arxiv 2501.12948</a>; DeepSeekMath/GRPO — <a href="https://arxiv.org/abs/2402.03300">2402.03300</a></p>
+      <p>Self-consistency — <a href="https://arxiv.org/abs/2203.11171">arxiv 2203.11171</a>; ReAct — <a href="https://arxiv.org/abs/2210.03629">2210.03629</a></p>
+      <p>"If Multi-Agent Debate is the Answer…" — <a href="https://arxiv.org/html/2502.08788v1">arxiv 2502.08788</a></p>
+      <p>METR, <i>Measuring long-task horizons</i> — <a href="https://arxiv.org/abs/2503.14499">arxiv 2503.14499</a></p>
+      <p>Anthropic, <i>Scaling Monosemanticity (SAEs)</i> — <a href="https://transformer-circuits.pub/2024/scaling-monosemanticity/">transformer-circuits</a>; Gemma Scope — <a href="https://arxiv.org/abs/2408.05147">2408.05147</a></p>
+      <p><i>Interpretable Company Similarity with SAEs</i> — <a href="https://arxiv.org/abs/2412.02605">arxiv 2412.02605</a></p>
+      <p>Microsoft GraphRAG — <a href="https://arxiv.org/abs/2404.16130">arxiv 2404.16130</a>; FinLoRA — <a href="https://arxiv.org/abs/2505.19819">2505.19819</a></p>
+      <p>DeepMind AlphaProof (Lean/IMO), Nature 2025; Imandra (finance formal verification) — <a href="https://www.imandra.ai/">imandra.ai</a></p>
+      <p><i>Can LMs Serve as Text-Based World Simulators?</i>, ACL 2024 — <a href="https://arxiv.org/abs/2406.06485">arxiv 2406.06485</a></p>
+      <p>Halawi et al., LLM forecasting — <a href="https://arxiv.org/abs/2402.18563">2402.18563</a>; ForecastBench — <a href="https://arxiv.org/abs/2409.19839">2409.19839</a></p>
+
+      <p><b>Industry (funds &amp; startups)</b></p>
+      <p>Man Group, <i>What AI Can (and Can't Yet) Do for Alpha</i> — <a href="https://www.man.com/insights/what-ai-can-do-for-alpha">man.com</a>; agentic signals (Bloomberg) — <a href="https://www.bloomberg.com/news/articles/2025-07-10/man-group-says-agentic-ai-is-now-devising-quant-trading-signals">bloomberg</a></p>
+      <p>Griffin: GenAI "falls short" for alpha — <a href="https://www.bloomberg.com/news/articles/2025-10-15/ken-griffin-says-genai-fails-to-help-hedge-funds-produce-alpha">bloomberg</a></p>
+      <p>Bridgewater AIA Labs — <a href="https://www.bridgewater.com/aia-labs">bridgewater.com</a>; AIA Forecaster — <a href="https://arxiv.org/abs/2511.07678">arxiv 2511.07678</a></p>
+      <p>BAM Embeddings, EMNLP 2024 — <a href="https://arxiv.org/html/2411.07142v1">arxiv 2411.07142</a></p>
+      <p>FactSet, <i>Supply Chain Signals</i>, Mar 2026 — <a href="https://insight.factset.com/supply-chain-signals-enhancing-the-customer-momentum-strategy-with-network-centrality">factset</a></p>
+      <p>Millennium × Anthropic (risk analyst) — <a href="https://www.bloomberg.com/news/articles/2026-08-06/millennium-partners-with-anthropic-to-develop-ai-risk-analyst">bloomberg</a></p>
+
+      <p><b>Data sources</b></p>
+      <p>SEC EDGAR APIs — <a href="https://www.sec.gov/search-filings/edgar-application-programming-interfaces">sec.gov</a>; ALFRED vintages — <a href="https://alfred.stlouisfed.org/help/downloaddata">alfred</a>; FRED legal (no-ML) — <a href="https://fred.stlouisfed.org/legal/">fred legal</a></p>
+      <p>Sharadar — <a href="https://sharadar.com/">sharadar.com</a>; Norgate — <a href="https://norgatedata.com/stockmarketpackages.php">norgatedata</a>; GDELT — <a href="https://gdeltproject.org/data.html">gdeltproject</a></p>
+      <p>GLEIF LEI (CC0) — <a href="https://www.gleif.org/en/about/open-data">gleif</a>; PatentsView — <a href="https://patentsview.org/data-pipeline">patentsview</a>; EPU / GPR indices — <a href="https://www.policyuncertainty.com/">policyuncertainty.com</a></p>
+
+      <p><b>The two projects</b></p>
+      <p>MiroFish — <a href="https://github.com/666ghj/MiroFish">github.com/666ghj/MiroFish</a>; OASIS engine (the science underneath) — <a href="https://arxiv.org/abs/2411.11581">arxiv 2411.11581</a></p>
+      <p>Chopra, <i>Population AI: Modeling Societies of Interacting Agents</i>, MIT 2026 — <a href="https://iceberg.mit.edu/thesis.pdf">iceberg.mit.edu/thesis.pdf</a>; Generative Agents (Park et al.) — <a href="https://arxiv.org/abs/2304.03442">arxiv 2304.03442</a>, 1,000-people — <a href="https://arxiv.org/abs/2411.10109">2411.10109</a></p>
+    </div>
+
+    <div class="foot wrap" style="padding-left:0;padding-right:0">
+      Study notes · rebuilt 2026-09-15 · synthesised from ~40 primary sources across seven research sweeps
+      (competitor intel, the anomaly/LLM literature, AI-technique survey, data-source survey, MiroFish, and the MIT
+      Population-AI thesis), all citations checked. A learning document — the numbers are honest, including the ones that
+      argue against the whole idea.
+    </div>
+  </div>
+</section>
+
+<script>
+/* theme toggle */
+(function(){var b=document.getElementById('theme');function cur(){return document.documentElement.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');}
+b.addEventListener('click',function(){var n=cur()==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);});})();
+/* scroll-spy */
+(function(){var links=[].slice.call(document.querySelectorAll('nav.secs a'));var map={};links.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+var obs=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){links.forEach(function(a){a.classList.remove('active');});var a=map[e.target.id];if(a){a.classList.add('active');a.scrollIntoView({block:'nearest',inline:'center'});}}});},{rootMargin:'-45% 0px -50% 0px'});
+document.querySelectorAll('section[id]').forEach(function(s){obs.observe(s);});})();
+/* cost calculator */
+(function(){var ids=['e','mc','nb','tok','it','gpu'];var el={};ids.forEach(function(k){el['s_'+k]=document.getElementById('s_'+k);el['v_'+k]=document.getElementById('v_'+k);});
+var tp=document.getElementById('s_tp');var out={};['calls','tok','gh','self','api','save'].forEach(function(k){out[k]=document.getElementById('o_'+k);});
+function fmt(n){if(n>=1e9)return (n/1e9).toFixed(2)+'B';if(n>=1e6)return (n/1e6).toFixed(2)+'M';if(n>=1e3)return (n/1e3).toFixed(1)+'k';return Math.round(n).toString();}
+function money(n){return '$'+(n>=1000?(n/1000).toFixed(1)+'k':n.toFixed(0));}
+function calc(){var e=+el.s_e.value,mc=+el.s_mc.value,nb=+el.s_nb.value,tok=+el.s_tok.value,it=+el.s_it.value,gpu=+el.s_gpu.value,tpv=+tp.value;
+el.v_e.textContent=e;el.v_mc.textContent=mc;el.v_nb.textContent=nb;el.v_tok.textContent=tok;el.v_it.textContent=it;el.v_gpu.textContent=gpu.toFixed(1);
+var calls=e*nb*mc*it;var toks=calls*tok;var gh=toks/tpv/3600;var self=gh*gpu;var api=toks/1e6*4;
+out.calls.textContent=fmt(calls);out.tok.textContent=fmt(toks);out.gh.textContent=gh.toFixed(1);out.self.innerHTML=money(self);out.api.innerHTML=money(api);out.save.innerHTML=money(Math.max(0,api-self));}
+[].concat(Object.keys(el).filter(function(k){return k.indexOf('s_')===0;}).map(function(k){return el[k];}),[tp]).forEach(function(n){if(n)n.addEventListener('input',calc);});
+calc();})();
+</script>
+</body>
+</html>
