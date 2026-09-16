@@ -1,13 +1,25 @@
 # Unfold Capital
 
-Research toward an **AI-native hedge fund**: can a structured economic graph and a
-population of interacting LLM/agent "entities" predict fundamental **ripple effects**
-through supply chains *before* they are reflected in consensus estimates and prices?
+Research toward an **AI-native hedge fund** — closer in spirit to **Bridgewater than to a
+statistical quant**. The bet is not on finding faint statistical patterns in price data;
+it is on **reasoning about the future**: building a causal understanding of *how the
+economic machine works* — how a shock propagates from one company to its suppliers,
+customers, and competitors — and using that to anticipate *what will happen* before it
+shows up in consensus estimates and prices.
 
-The core question is not whether agents can read filings or write research code — that
-is becoming table stakes at every major fund. It is whether a **causal, mechanism-level
-simulation** of how companies respond to shocks contains *incremental* predictive
-information beyond the compressed signal already captured by customer stock returns.
+Where a classic quant asks *"what has statistically predicted returns?"*, this asks
+*"given this event, how will the affected companies actually respond, and where does that
+leave fundamentals versus what the market expects?"* — cause-and-effect reasoning about
+the world, not curve-fitting on history. Modern LLM/agent systems make that kind of
+population-scale causal simulation newly tractable.
+
+Concretely: can a structured economic graph and a population of interacting agent
+"entities" predict fundamental **ripple effects** through supply chains *before* they are
+reflected in prices? The question is not whether agents can read filings or write research
+code — that is becoming table stakes at every fund. It is whether a **causal,
+mechanism-level simulation** of how companies respond to shocks contains *incremental*
+predictive information beyond the compressed signal already captured by customer stock
+returns.
 
 ## The differentiated hypothesis
 
