@@ -186,14 +186,45 @@ html{scroll-behavior:smooth}
       <p>AgentTorch's authors brand their flavour of ABM as a <span class="term">Large Population Model</span>. The readme's own line: <em>"While LLMs build digital humans, LPMs build digital societies."</em> The pitch is that an LLM captures one person's reasoning, but an LPM captures the <em>ripple effects of millions of interacting decisions</em> — the collective-scale dynamics an LLM alone can't represent.</p>
     </div>
 
-    <p>AgentTorch is an open-source Python framework (AGPL-3.0, © Ayush Chopra, MIT Media Lab) for building these LPMs. Its four stated design principles — verbatim from the readme, paraphrased in plain English:</p>
+    <p>AgentTorch is an open-source Python framework (AGPL-3.0, © Ayush Chopra, MIT Media Lab) for building these LPMs. The readme lists <b>four design principles</b>. Below is each one — what it actually means, and why it matters — laid out so you can scan it. The whole breakthrough is really principles <b>1 and 2 working together</b>; principle 3 is the hook for our use case.</p>
 
-    <ul class="clean ok">
-      <li><span class="ic">1</span><b>Scalability.</b> Simulate very large populations (their headline demo is <b>8.4 million</b> synthetic New Yorkers) in seconds, by running everything as batched tensor math on a GPU.</li>
-      <li><span class="ic">2</span><b>Differentiability.</b> You can take the derivative <em>through</em> the whole simulation — even though it's full of random events and if-then rules — so you can tune it with gradient descent, the same way a neural network is trained.</li>
-      <li><span class="ic">3</span><b>Composition.</b> The simulation can be wired together with neural nets. An <b>LLM</b> can supply agent behaviour; a small <b>neural net</b> can supply the simulation's parameters. This is the hook we care about.</li>
-      <li><span class="ic">4</span><b>Generalization.</b> Same machinery is meant to run humans-in-cities, cells-in-tissue, or avatars-in-games.</li>
-    </ul>
+    <div class="grid2">
+      <div class="box" style="margin:0">
+        <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:8px">
+          <span class="mono" style="color:var(--good);font-weight:700;font-size:15px">1</span>
+          <span style="font-family:var(--serif);font-weight:600;font-size:18px">Scalability</span>
+        </div>
+        <p style="margin:0 0 .6em"><b>What it means.</b> Simulate very large populations — the headline demo is <b>8.4 million</b> synthetic New Yorkers — in <em>seconds</em>.</p>
+        <p style="margin:0" class="dim"><b>Why it matters.</b> There's no object per person: the whole population is rows in one tensor, and each step is a single GPU operation over all rows at once.</p>
+      </div>
+
+      <div class="box" style="margin:0;border-left:4px solid var(--accent)">
+        <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:8px">
+          <span class="mono" style="color:var(--accent-ink);font-weight:700;font-size:15px">2</span>
+          <span style="font-family:var(--serif);font-weight:600;font-size:18px">Differentiability <span class="tag s" style="vertical-align:middle">the breakthrough</span></span>
+        </div>
+        <p style="margin:0 0 .6em"><b>What it means.</b> You can tune the <em>whole</em> simulation by gradient descent — the same way a neural net is trained — instead of blind trial-and-error on its knobs.</p>
+        <p style="margin:0" class="dim"><b>Why it matters.</b> Simulations of people are full of hard yes/no coin-flips that normally block the math. AgentTorch keeps the gradient alive through them — that's the hard part nobody else did at scale.</p>
+      </div>
+
+      <div class="box" style="margin:0;border-left:4px solid var(--teal)">
+        <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:8px">
+          <span class="mono" style="color:var(--teal);font-weight:700;font-size:15px">3</span>
+          <span style="font-family:var(--serif);font-weight:600;font-size:18px">Composition <span class="tag s" style="vertical-align:middle">our hook</span></span>
+        </div>
+        <p style="margin:0 0 .6em"><b>What it means.</b> Wire neural nets into the sim: an <b>LLM</b> supplies agent behaviour; a small <b>neural net</b> supplies the simulation's parameters.</p>
+        <p style="margin:0" class="dim"><b>Why it matters.</b> This is how you'd drop your own economic-link reasoning into the engine — the LLM decides <em>structure and direction</em>, the sim handles the math.</p>
+      </div>
+
+      <div class="box" style="margin:0">
+        <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:8px">
+          <span class="mono" style="color:var(--muted);font-weight:700;font-size:15px">4</span>
+          <span style="font-family:var(--serif);font-weight:600;font-size:18px">Generalization</span>
+        </div>
+        <p style="margin:0 0 .6em"><b>What it means.</b> The same machinery is meant to run humans-in-cities, cells-in-tissue, or avatars-in-games.</p>
+        <p style="margin:0" class="dim"><b>Why it matters.</b> Nothing is hard-wired to epidemics — so nothing stops you pointing it at companies-in-a-supply-chain.</p>
+      </div>
+    </div>
 
     <div class="verdict">
       <div class="vt">The one mental model to hold</div>
