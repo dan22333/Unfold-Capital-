@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulating the Future — what Chopra built, and how to hunt an Ackman trade</title>
+<style>
+:root{
+  --ground:#f5f4f0; --panel:#ffffff; --panel-2:#f6f5f1; --ink:#1a1a1c; --ink-soft:#33342f;
+  --muted:#5f6058; --faint:#8c8d82; --line:#e5e3da; --line-strong:#d0cec2;
+  --accent:#b5641a; --accent-soft:#f0e2cf; --accent-ink:#8a4a10;
+  --teal:#256b64; --teal-soft:#d8e8e4;
+  --good:#2b6e46; --good-soft:#dcebdf; --warn:#a6640f; --danger:#a83c2c; --danger-soft:#f0dcd6;
+  --shadow:0 1px 2px rgba(26,26,28,.05),0 8px 28px -14px rgba(26,26,28,.14);
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --read:730px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --ground:#101113; --panel:#17181b; --panel-2:#1c1e21; --ink:#eceae4; --ink-soft:#cbc9c1;
+    --muted:#9a998e; --faint:#6d6d64; --line:#282a2d; --line-strong:#383a3d;
+    --accent:#dd9a4a; --accent-soft:#352a19; --accent-ink:#eeb463;
+    --teal:#54b5a7; --teal-soft:#16302c; --good:#54bd83; --good-soft:#14281c;
+    --warn:#dd9a4a; --danger:#e07b6a; --danger-soft:#2c1713;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px -16px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="light"]{--ground:#f5f4f0;--panel:#ffffff;--panel-2:#f6f5f1;--ink:#1a1a1c;--ink-soft:#33342f;--muted:#5f6058;--faint:#8c8d82;--line:#e5e3da;--line-strong:#d0cec2;--accent:#b5641a;--accent-soft:#f0e2cf;--accent-ink:#8a4a10;--teal:#256b64;--teal-soft:#d8e8e4;--good:#2b6e46;--good-soft:#dcebdf;--warn:#a6640f;--danger:#a83c2c;--danger-soft:#f0dcd6;--shadow:0 1px 2px rgba(26,26,28,.05),0 8px 28px -14px rgba(26,26,28,.14);}
+:root[data-theme="dark"]{--ground:#101113;--panel:#17181b;--panel-2:#1c1e21;--ink:#eceae4;--ink-soft:#cbc9c1;--muted:#9a998e;--faint:#6d6d64;--line:#282a2d;--line-strong:#383a3d;--accent:#dd9a4a;--accent-soft:#352a19;--accent-ink:#eeb463;--teal:#54b5a7;--teal-soft:#16302c;--good:#54bd83;--good-soft:#14281c;--warn:#dd9a4a;--danger:#e07b6a;--danger-soft:#2c1713;--shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px -16px rgba(0,0,0,.7);}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+  font-size:17.5px;line-height:1.72;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+h1,h2,h3,h4{font-family:var(--serif);font-weight:600;line-height:1.18;text-wrap:balance;margin:0}
+p{margin:0 0 1.05em}
+a{color:var(--accent-ink);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--accent) 38%,transparent)}
+a:hover{border-bottom-color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+em{font-style:italic}
+strong{font-weight:650}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.dim{color:var(--muted)}
+.wrap{max-width:var(--read);margin:0 auto;padding:0 24px}
+.wide{max-width:1080px;margin:0 auto;padding:0 24px}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-ink);font-weight:600}
+header.top{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--ground) 90%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top .bar{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;align-items:center;gap:16px;height:54px}
+.brand{font-family:var(--mono);font-size:12px;letter-spacing:.05em;font-weight:600;white-space:nowrap}
+.brand b{color:var(--accent-ink)}
+nav.secs{display:flex;gap:2px;overflow-x:auto;flex:1;scrollbar-width:none}
+nav.secs::-webkit-scrollbar{display:none}
+nav.secs a{font-family:var(--mono);font-size:11.5px;color:var(--muted);padding:6px 9px;border-radius:6px;border-bottom:none;white-space:nowrap}
+nav.secs a:hover{color:var(--ink);background:var(--panel-2)}
+nav.secs a.active{color:var(--accent-ink);background:var(--accent-soft)}
+.themebtn{font-family:var(--mono);font-size:11px;background:var(--panel);border:1px solid var(--line-strong);color:var(--muted);border-radius:6px;padding:6px 9px;cursor:pointer}
+.themebtn:hover{color:var(--ink);border-color:var(--accent)}
+.hero{padding:70px 0 46px;border-bottom:1px solid var(--line);
+  background:radial-gradient(120% 80% at 85% -20%,var(--accent-soft) 0%,transparent 60%)}
+.hero h1{font-size:clamp(30px,5vw,50px);letter-spacing:-.015em;max-width:20ch}
+.hero .lede{font-size:clamp(18px,2.1vw,21px);color:var(--ink-soft);margin-top:22px}
+.hero .who{margin-top:22px;font-family:var(--mono);font-size:12px;color:var(--faint)}
+section{padding:56px 0;border-bottom:1px solid var(--line);scroll-margin-top:62px}
+.part-label{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:10px}
+h2.part{font-size:clamp(26px,3.6vw,38px);letter-spacing:-.015em;margin-bottom:6px}
+h3.sub{font-size:clamp(21px,2.6vw,26px);margin:44px 0 4px;letter-spacing:-.01em}
+h3.sub .n{font-family:var(--mono);font-size:15px;color:var(--accent);font-weight:600;margin-right:10px}
+h4.mini{font-size:18px;margin:26px 0 6px}
+.lead-in{color:var(--ink-soft);font-size:19px;margin:12px 0 8px}
+.box{border-radius:12px;padding:18px 22px;margin:22px 0;border:1px solid var(--line);background:var(--panel);box-shadow:var(--shadow)}
+.box .bt{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.box.def{border-left:4px solid var(--teal)} .box.def .bt{color:var(--teal)}
+.box.take{border-left:4px solid var(--accent);background:var(--accent-soft)} .box.take .bt{color:var(--accent-ink)}
+.box.work{border-left:4px solid var(--muted);background:var(--panel-2)} .box.work .bt{color:var(--muted)}
+.box.warn{border-left:4px solid var(--danger);background:var(--danger-soft)} .box.warn .bt{color:var(--danger)}
+.box.good{border-left:4px solid var(--good);background:var(--good-soft)} .box.good .bt{color:var(--good)}
+.box p:last-child{margin-bottom:0}
+.box .term{font-family:var(--serif);font-weight:600;font-style:italic}
+.verdict{border:1px solid var(--accent);border-left:6px solid var(--accent);border-radius:14px;background:linear-gradient(135deg,var(--accent-soft),var(--panel) 72%);
+  padding:24px 26px;margin:26px 0;box-shadow:var(--shadow)}
+.verdict .vt{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-ink);font-weight:700;margin-bottom:10px}
+.verdict h4{font-size:22px;margin:0 0 10px}
+.verdict p:last-child{margin-bottom:0}
+.eq{font-family:var(--serif);font-style:italic;font-size:19px;text-align:center;background:var(--panel-2);
+  border:1px solid var(--line);border-radius:10px;padding:20px 46px 20px 22px;margin:20px 0;position:relative;overflow-x:auto;line-height:2}
+.eq .en{position:absolute;right:14px;top:10px;font-family:var(--mono);font-style:normal;font-size:11px;color:var(--faint)}
+.eq .where{display:block;font-family:var(--sans);font-style:normal;font-size:13.5px;color:var(--muted);margin-top:12px;line-height:1.6;text-align:left}
+pre.code{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.6;margin:18px 0;color:var(--ink-soft)}
+pre.code .c{color:var(--faint)}
+pre.code .k{color:var(--accent-ink)}
+code.inl{font-family:var(--mono);font-size:.86em;background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);margin:20px 0;background:var(--panel)}
+table.led{width:100%;border-collapse:collapse;font-size:15px;min-width:620px}
+table.led th{font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;text-align:left;color:var(--muted);padding:12px 16px;border-bottom:1px solid var(--line-strong);font-weight:600}
+table.led td{padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+table.led tr:last-child td{border-bottom:none}
+table.led td:first-child{font-weight:600}
+.yes{color:var(--good);font-weight:700}.no{color:var(--danger);font-weight:700}.mid{color:var(--warn);font-weight:700}
+.tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.tag.v{color:var(--good);background:var(--good-soft)} .tag.s{color:var(--warn);background:var(--accent-soft)} .tag.h{color:var(--danger);background:var(--danger-soft)}
+ul.clean{list-style:none;padding:0;margin:14px 0}
+ul.clean li{display:grid;grid-template-columns:24px 1fr;gap:10px;margin-bottom:12px;align-items:start}
+ul.clean li .ic{font-family:var(--mono);font-weight:700;margin-top:1px}
+ul.clean.ok li .ic{color:var(--good)}ul.clean.no li .ic{color:var(--danger)}ul.clean.step li .ic{color:var(--accent-ink)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+.pipe{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;margin:20px 0;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+.pipe .st{flex:1;min-width:130px;padding:14px 16px;background:var(--panel);border-right:1px solid var(--line)}
+.pipe .st:last-child{border-right:none}
+.pipe .st .sn{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink);font-weight:700}
+.pipe .st .sd{font-size:13.5px;color:var(--ink-soft);margin-top:4px}
+.refs{font-size:13.5px;color:var(--muted)}
+.refs p{margin:0 0 8px}.refs a{font-family:var(--mono);font-size:12px}
+.foot{padding:36px 0 72px;color:var(--faint);font-size:12.5px;font-family:var(--mono)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+html{scroll-behavior:smooth}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="bar">
+    <span class="brand">UNFOLD <b>/</b> Simulating the Future</span>
+    <nav class="secs" id="nav">
+      <a href="#start">Start here</a>
+      <a href="#rules">Rules vs LLM agents</a>
+      <a href="#causal">Causality</a>
+      <a href="#cascade">The cascade</a>
+      <a href="#branch">Branching</a>
+      <a href="#convex">Convexity detector</a>
+      <a href="#calib">Calibrating the unseen</a>
+      <a href="#priced">Priced in?</a>
+      <a href="#forecast">Why not forecast</a>
+      <a href="#run">Download &amp; run?</a>
+      <a href="#trends">AI trends</a>
+      <a href="#cs329a">CS329A</a>
+      <a href="#mvp">The MVP test</a>
+      <a href="#ledger">What's proven</a>
+    </nav>
+    <button class="themebtn" id="themebtn" aria-label="Toggle theme">◐</button>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Read top-to-bottom · define-then-use · every question answered</div>
+    <h1>Simulating the future, and hunting an Ackman trade</h1>
+    <p class="lede">What Ayush Chopra actually built (AgentTorch), in plain English and through worked examples — why a <em>mechanistic</em> simulation can answer "what if?" when a statistical model can't, how "sensitivity" becomes a <em>convexity detector</em> for asymmetric bets like Ackman's 2020 CDS trade, how you calibrate a model on the past for a shock that never happened, whether it's already priced in, the AI trends making this buildable now, what Stanford's CS329A teaches that you'd use, and a concrete MVP to see if you can catch it.</p>
+    <p class="who">Built for Daniel · companion to <span class="mono">sim-alpha.html</span> &amp; <span class="mono">agenttorch-explained.html</span> · Sep 2026</p>
+  </div>
+</div>
+
+<!-- ============================ START HERE ============================ -->
+<section id="start">
+  <div class="wrap">
+    <div class="part-label">Part 0 · Start here</div>
+    <h2 class="part">What did this guy actually build?</h2>
+    <p class="lead-in">Forget the jargon for one paragraph. Here is the whole thing in kitchen language.</p>
+
+    <p>Ayush Chopra (MIT Media Lab) built a piece of software called <b>AgentTorch</b> that lets you make a <b>toy copy of a world</b> — a city, an economy, a supply chain — out of many little "agents" (people, companies) that follow rules and affect each other. Simulations like that have existed for decades. He added <b>two new powers</b> that together are the actual contribution:</p>
+
+    <ul class="clean ok">
+      <li><span class="ic">1</span><b>You can train the toy world like an AI model.</b> Instead of hand-guessing the world's settings ("how contagious is this disease?"), you show it real data and it <em>auto-tunes its own settings</em> to match reality — the same math that trains a neural network.</li>
+      <li><span class="ic">2</span><b>You can let an LLM be the "brain" of each agent.</b> So an agent doesn't blindly follow a frozen formula; it <em>reasons</em> about its situation and adapts — like a real person or a real management team would.</li>
+    </ul>
+
+    <p>His proof-of-capability was a <b>COVID model of 8.4 million synthetic New Yorkers</b>: it ran a real epidemic, let people <em>adaptively</em> decide whether to isolate, and tuned the disease's parameters to fit real case data automatically. That's it. He did <b>not</b> build anything about markets — but the <em>machine</em> he built is the exact kind of machine your fund idea needs. The rest of this doc is about why, and where it breaks.</p>
+
+    <div class="box take">
+      <div class="bt">▸ The one sentence to remember</div>
+      <p>He built a <b>"what-if machine"</b>: describe a world and a shock, press play, and watch the consequences ripple through — and because it's built out of real cause-and-effect (not curve-fitting on history), you can ask it about shocks that <em>never happened before</em>. Your fund is a bet that this machine, pointed at the economy, can find asymmetric trades before the market sees them.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ RULES VS LLM ============================ -->
+<section id="rules">
+  <div class="wrap">
+    <div class="part-label">Part 1 · The "frozen rule" problem</div>
+    <h2 class="part">Frozen equations vs. an LLM that adapts</h2>
+    <p class="lead-in">You asked about "being stuck with a rule." This is the cleanest place to see why the LLM matters. It's the difference between an agent that follows a <em>fixed formula forever</em> and one that <em>changes its mind</em> as the situation changes.</p>
+
+    <h3 class="sub"><span class="n">1.1</span>The old way: a frozen rule</h3>
+    <p>In a classic agent-based model, every agent obeys a rule the modeller wrote once, by hand, and it never changes. For example:</p>
+    <pre class="code"><span class="c"># a frozen behavioural rule — written once, fixed forever</span>
+if cases_nearby &gt; threshold:
+    isolate = True        <span class="c"># always, no matter what</span>
+else:
+    isolate = False</pre>
+    <p>That rule is a <b>guess</b>, and worse, it's a <em>rigid</em> guess. Real people don't behave like that. Eight months into a pandemic, with the <em>same</em> case numbers, people got tired and stopped isolating — "pandemic fatigue." A frozen rule can never produce that: feed it the same input, it forever spits out the same output. It has no notion of "I'm exhausted," "the mood has shifted," "the government just changed the message." <b>The behaviour cannot adapt to a situation the modeller didn't foresee.</b></p>
+
+    <div class="box def">
+      <div class="bt">▸ Why this is a real problem for markets, not just epidemics</div>
+      <p>Swap "isolate?" for a company's decision. A frozen rule says <span class="term">"if input costs rise 10%, cut capex 5%."</span> But a real CFO's response depends on the whole context — is this a temporary spike or a regime change? are competitors cutting too? is credit still open? A fixed coefficient can't capture that judgement, and judgement is exactly where the non-obvious, non-priced consequences live.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">1.2</span>The new way: the LLM is the agent's brain</h3>
+    <p>Chopra's move: instead of a frozen <code class="inl">if</code>, ask an LLM. Give it the agent's situation in words and let it decide:</p>
+    <pre class="code"><span class="c"># the LLM decides the behaviour, in context</span>
+prompt = f"""You are a NYC resident, month {t} of the pandemic.
+Local cases: {cases}. You've been isolating for {months} months.
+Your job {job_status}. Do you isolate today? Reason, then answer."""
+isolate = llm(prompt)   <span class="c"># can say "no" in month 8 that it said "yes" in month 2</span></pre>
+    <p>Now the same case count can produce a <em>different</em> decision depending on fatigue, job status, messaging — because the LLM carries a rich, human-like model of how a person actually reasons. Chopra's <b>verified</b> result: in a "pandemic fatigue" experiment, LLM-driven agents reproduced the adaptive drop-off in isolation that a fixed rule structurally cannot. <b>That is the whole point of putting the LLM inside the simulation.</b></p>
+
+    <div class="box warn">
+      <div class="bt">▸ The honest catch — the LLM does NOT run the numbers</div>
+      <p>Crucial subtlety (and your <span class="mono">agenttorch-explained.html</span> already nailed this): the LLM supplies the <b>direction and shape</b> of behaviour ("fatigue makes isolation less likely"), but it sits <em>outside</em> the math that gets tuned. The actual <em>magnitude</em> — how much less likely — is still a number the simulation calibrates against data. So it's <b>LLM for judgement + gradient descent for the numbers</b>, not "the LLM decides everything." If you let the LLM invent the magnitudes, you get confident nonsense.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ CAUSALITY ============================ -->
+<section id="causal">
+  <div class="wrap">
+    <div class="part-label">Part 2 · The deepest question</div>
+    <h2 class="part">"He can build causality?" — why a mechanism gives you cause-and-effect</h2>
+    <p class="lead-in">This is the most important idea in the whole document, so we go slowly. Why can a simulation answer "what if X?" honestly, when a normal statistical/ML model can't?</p>
+
+    <h3 class="sub"><span class="n">2.1</span>Correlation model vs. mechanism model</h3>
+    <div class="grid2">
+      <div class="box work">
+        <div class="bt">A statistical / ML model</div>
+        <p>Learns <em>"when X happened in the past, Y usually followed."</em> It is a <b>fit to what already happened</b>. Ask it "what if X were different?" and all it can do is <em>extrapolate the old correlation</em> — which quietly assumes the world still works the way it did in the training data.</p>
+      </div>
+      <div class="box good">
+        <div class="bt">A mechanistic / agent model</div>
+        <p>You write down the <b>actual chain of causes</b>: shock → each entity reacts → their reactions hit the next entity → … When you change X, you <em>re-run the chain</em> and it computes the consequence <b>through the mechanism</b>, not by remembering history. It can answer about an X that <em>never occurred</em>.</p>
+      </div>
+    </div>
+
+    <div class="box def">
+      <div class="bt">▸ The everyday example that makes it click</div>
+      <p>Suppose you have years of data and notice: <em>every time ice-cream sales rise, drownings rise.</em> A correlation model, asked "what if we ban ice cream — do drownings fall?" would happily say <b>yes</b>. Wrong — the real cause is <em>summer heat</em> drives both. A mechanism model, which encodes "heat → swimming → drownings" and "heat → ice cream," answers correctly: banning ice cream does nothing. <b>Only a model that encodes the real causal arrows can answer a "what if" it never saw.</b> That's what "counterfactually valid" means, and it's why Chopra can claim causality where a curve-fit can't.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">2.2</span>Why economists call this the "Lucas critique"</h3>
+    <p>There's a famous result in economics (the <b>Lucas critique</b>) that Chopra explicitly invokes — and it's the same idea. A pattern you measured under one regime <em>breaks</em> the moment the regime changes, because the agents <em>react</em> to the new regime. "People spent X% of a tax cut last time" won't hold if people now expect the cut to be temporary. So for any <b>policy or shock counterfactual</b>, you need a model of the <em>mechanism</em> (how agents decide), not a fitted historical relationship. A differentiable agent simulation is exactly a machine for building such structural models — that's his defensible claim.</p>
+
+    <div class="box warn">
+      <div class="bt">▸ The boundary — causality is only as good as your mechanism</div>
+      <p>"Causally valid" is <b>conditional on the mechanism being right</b>. If your causal arrows are wrong, the model gives you a <em>confident, precise, wrong</em> counterfactual — arguably more dangerous than an honest correlation. So the whole game is: get the mechanism approximately right, and <em>stress-test</em> it hard. This is why the fund's edge is a <em>proprietary, well-validated mechanism</em>, not "we have a simulator."</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ THE CASCADE ============================ -->
+<section id="cascade">
+  <div class="wrap">
+    <div class="part-label">Part 3 · Scenario roll-forward</div>
+    <h2 class="part">Walking the cascade — "who blows up first?"</h2>
+    <p class="lead-in">You quoted the line: <em>"demand shock → revenue → margins → cash flow → default probability → spreads → who blows up first."</em> You asked: is this from his work? Here's the honest split.</p>
+
+    <div class="pipe">
+      <div class="st"><div class="sn">Shock</div><div class="sd">Demand drops / lockdown of size S</div></div>
+      <div class="st"><div class="sn">Revenue</div><div class="sd">Each firm's sales fall — by how much depends on the firm</div></div>
+      <div class="st"><div class="sn">Margin</div><div class="sd">Fixed costs don't fall → margins compress faster than revenue</div></div>
+      <div class="st"><div class="sn">Cash flow</div><div class="sd">Thin cash + high debt = trouble servicing interest</div></div>
+      <div class="st"><div class="sn">Default risk</div><div class="sd">Probability of missing a payment rises</div></div>
+      <div class="st"><div class="sn">Spreads</div><div class="sd">Credit spread / CDS widens → who blows up first</div></div>
+    </div>
+
+    <div class="box take">
+      <div class="bt">▸ What's his, and what's yours (be precise)</div>
+      <p><b>The machinery is his.</b> "Take a shock, push it step-by-step through a network of interacting entities, and read the outcome at the end" is exactly what AgentTorch does — his COVID model pushes an infection through a contact network; his toy economy pushes spending through earn→consume→employ. <b>The finance cascade above is MY mapping</b> of that machinery onto credit — he never built revenue-to-default anything. So: <span class="tag v">verified</span> the engine exists and does cascades; <span class="tag s">synthesis</span> that you can point it at corporate credit. Don't tell an investor Chopra proved a credit model — he didn't.</p>
+    </div>
+
+    <p><b>Why a static statistical signal can't do this.</b> A signal like "customer stock went up 20%, so buy the supplier" gives you <em>one compressed number</em>. It can't tell you <em>which</em> firm in the chain is the fragile one, <em>why</em>, or <em>when</em> the stress arrives — because it never modelled the mechanism. The cascade does, which is the entire meaning of <em>"fundamental analysis of the future"</em>: you're reconstructing the chain of fundamentals a shock will set off, not pattern-matching a past correlation.</p>
+  </div>
+</section>
+
+<!-- ============================ BRANCHING ============================ -->
+<section id="branch">
+  <div class="wrap">
+    <div class="part-label">Part 4 · Counterfactual branching</div>
+    <h2 class="part">Branching the future — with a concrete example</h2>
+    <p class="lead-in">"Because it's mechanism, not correlation, you can enumerate branches." Let's make that physical: what Chopra could branch, and what you would branch.</p>
+
+    <h3 class="sub"><span class="n">4.1</span>What HE built &amp; could find</h3>
+    <p>His COVID model is a branching machine. Freeze the city at month 3 and run two worlds that differ by <b>one intervention</b>:</p>
+    <div class="grid2">
+      <div class="box"><div class="bt" style="color:var(--teal)">Branch A — lift lockdown now</div><p>Contacts rise → transmission rises → <em>but</em> the LLM-agents see cases climbing and some <b>self-isolate anyway</b> → the curve bends in a way a fixed rule would miss. Output: a specific infection + mortality trajectory.</p></div>
+      <div class="box"><div class="bt" style="color:var(--teal)">Branch B — hold lockdown 3 more months</div><p>Different contact pattern → different curve → different behavioural fatigue by month 6. Output: a second trajectory you can compare, apples-to-apples, to Branch A.</p></div>
+    </div>
+    <p>That comparison — <em>two worlds identical except for one lever</em> — is a genuine counterfactual. It's the thing you cannot get by staring at historical data, because history only ran <em>one</em> of the branches.</p>
+
+    <h3 class="sub"><span class="n">4.2</span>What YOU would build &amp; could find</h3>
+    <p>Same machine, entities = companies, edges = supplier / customer / competitor / lender links. Freeze the economy at a date and branch on a macro shock:</p>
+    <div class="tblwrap">
+      <table class="led">
+        <thead><tr><th>Branch</th><th>What propagates through the firm graph</th><th>What you read off per company</th></tr></thead>
+        <tbody>
+          <tr><td>Recession</td><td>Demand ↓ across consumer-facing nodes → suppliers → lenders</td><td>Δrevenue, Δmargin, Δdefault-prob, Δspread</td></tr>
+          <tr><td>Soft landing</td><td>Mild slowdown, credit stays open</td><td>Small moves; most names barely budge</td></tr>
+          <tr><td>Credit freeze</td><td>Refinancing shuts → high-leverage, short-maturity names hit first</td><td>A few names blow out; the rest survive</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><b>What you're hunting in that table:</b> a company whose outcome is <em>nearly unchanged</em> in the soft-landing and recession branches but <em>catastrophic</em> in the credit-freeze branch — <b>and</b> whose insurance (CDS / puts) is cheap because the market is pricing the boring branches. That mismatch is the Ackman shape. Branching is how you <em>find</em> it systematically instead of by gut.</p>
+
+    <div class="box warn">
+      <div class="bt">▸ Honest limit — branching maps consequences, it doesn't pick the branch</div>
+      <p>The engine tells you <em>what each branch does</em>. It does <b>not</b> tell you which branch will actually happen or its probability. That judgement — "the credit-freeze branch is more likely than the market thinks" — is the human's, and it's where the real conviction and risk live.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ CONVEXITY ============================ -->
+<section id="convex">
+  <div class="wrap">
+    <div class="part-label">Part 5 · The exciting one</div>
+    <h2 class="part">Sensitivity = a convexity detector</h2>
+    <p class="lead-in">This is the piece that should genuinely excite you for the Ackman case, because it turns "find the asymmetric bet" from art into a <em>search you can automate</em>.</p>
+
+    <h3 class="sub"><span class="n">5.1</span>What the gradient literally is</h3>
+    <p>Because the whole simulation is differentiable, after one backward pass you get, <em>for every entity at once</em>, the number:</p>
+    <div class="eq"><span class="en">the sensitivity</span>
+      <span>∂(entity's value or spread) / ∂(shock)</span>
+      <span class="where">In words: "if the shock gets a little worse, how much does <em>this</em> company's value/spread move?" One backward pass gives it for thousands of companies simultaneously — no re-running the sim once per company.</span>
+    </div>
+    <p>A <b>small, flat</b> sensitivity = a boring name; a little more stress barely moves it; the market has it about right. A <b>steep</b> sensitivity = the name reacts violently. But the real prize is the <em>second</em> derivative — the <b>curvature</b>:</p>
+    <div class="eq"><span class="en">convexity</span>
+      <span>∂²(value) / ∂(shock)²  &nbsp;&nbsp;≫ 0</span>
+      <span class="where">This is "how fast the sensitivity itself accelerates." Big curvature = below some threshold almost nothing happens, but past it the entity falls off a cliff. That non-linear, cliff-edge shape <em>is</em> convexity.</span>
+    </div>
+
+    <div class="box take">
+      <div class="bt">▸ Why that shape is exactly an Ackman trade</div>
+      <p>Ackman's 2020 CDS position had a payoff like: <em>if the world stays fine, you lose a small, fixed premium; if the world breaks, you make a fortune.</em> That asymmetric, cliff-edge payoff <b>is</b> high convexity. So a machine that computes curvature across every entity and <b>ranks them</b> is literally a machine that surfaces "cheap-premium / huge-tail-payoff" candidates — the thing Ackman found by hand on investment-grade CDS. You'd be <em>searching the whole graph</em> for the next one instead of eyeballing it.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">5.2</span>The honest caveats</h3>
+    <ul class="clean no">
+      <li><span class="ic">✗</span><b>The curvature is only as trustworthy as the calibrated mechanism.</b> Wrong pass-through model → wrong convexity ranking.</li>
+      <li><span class="ic">✗</span><b>High convexity ≠ a good trade.</b> You still need (a) the shock to be plausible, (b) the market to be under-pricing it, and (c) a cheap instrument to express it. The detector finds candidates; it doesn't close the deal.</li>
+      <li><span class="ic">✗</span><b>Everyone can compute Greeks.</b> Option convexity is already priced. Your edge is only in convexity the standard models <em>miss</em> — the kind that comes from <b>network/supply-chain propagation</b> a single-firm model never sees. That's the specific, defensible claim.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================ CALIBRATION ============================ -->
+<section id="calib">
+  <div class="wrap">
+    <div class="part-label">Part 6 · Your sharpest objection</div>
+    <h2 class="part">"It never happened before, so how can we calibrate on the past?"</h2>
+    <p class="lead-in">You pushed back on "calibrated on past stress (2008, 2015, 2020)" by saying: the future shock is new, we can't know it. You're half right, and the other half is the key insight.</p>
+
+    <div class="box def">
+      <div class="bt">▸ The resolution — you calibrate the physics, not the event</div>
+      <p>You do <b>not</b> calibrate on "COVID." COVID never happened before, agreed. You calibrate the <b>mechanism's response coefficients</b> — e.g. <em>"per 10% drop in cash flow, how much has a firm like this historically widened in spread?"</em> That <b>relationship</b> — the physics of how stress turns into default — <em>recurs</em> across 2008, 2015, 2020, even though the <em>trigger</em> was different each time (housing, oil, virus). You learn the <em>gravity</em>, then drop a <em>new</em> object.</p>
+    </div>
+
+    <div class="box work">
+      <div class="bt">▸ The hurricane analogy</div>
+      <p>You've never seen <em>this</em> hurricane. But you calibrate <b>how water flows downhill and where a city floods</b> on <em>past</em> storms — that mechanism is stable. Then you simulate this new storm's specific rainfall over that calibrated terrain. The <b>storm is novel; the hydraulics aren't.</b> Same with markets: the <em>shock</em> is novel; the <em>pass-through from cash-flow stress to default</em> is far more stable.</p>
+    </div>
+
+    <div class="box warn">
+      <div class="bt">▸ When this fails — and how to respect it</div>
+      <p>Sometimes the <em>mechanism itself</em> breaks in the new regime — 2008 had bank-to-bank feedback loops that a model calibrated on calm years wouldn't contain. So: <b>(1)</b> calibrate across <em>multiple, diverse</em> stress regimes, not one; <b>(2)</b> grade every bet by how much it relies on a <em>recurring</em> mechanism vs a genuinely <em>unprecedented</em> structure. Your <span class="mono">sim-alpha.html</span> already has this ladder: recurring-mechanism bets are <span class="tag v">tier-1, backtestable</span>; truly unprecedented regime bets are <span class="tag h">tier-3, closer to gambling</span>. Know which one you're making.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ PRICED IN ============================ -->
+<section id="priced">
+  <div class="wrap">
+    <div class="part-label">Part 7 · "Is it already priced in?"</div>
+    <h2 class="part">Model-implied vs. market-implied — the gap is the trade</h2>
+    <p class="lead-in">You asked what "contrast model-implied default distribution vs market-implied (CDS-implied)" means, and where this stands today.</p>
+
+    <h3 class="sub"><span class="n">7.1</span>Two independent estimates of the same thing</h3>
+    <p>The chance a company defaults can be estimated <b>two</b> ways, and comparing them is the whole game:</p>
+    <div class="grid2">
+      <div class="box good"><div class="bt">Market-implied</div><p>A CDS price is <em>insurance</em> against default. Its spread <b>backs out a default probability</b> (roughly: spread ≈ default-prob × loss-given-default). So the market is constantly telling you <em>its</em> estimate of each firm's default odds — for free.</p></div>
+      <div class="box take"><div class="bt">Model-implied</div><p>Your mechanistic simulation <em>also</em> produces a default probability, by pushing a scenario through revenue → cash flow → default. This estimate <b>knows things the market's single number compresses away</b> — like a supply-chain shock two hops upstream.</p></div>
+    </div>
+
+    <div class="eq"><span class="en">the signal</span>
+      <span>Gap = P<sub>model</sub>(default) − P<sub>market</sub>(default)</span>
+      <span class="where">Gap ≫ 0 → your model sees danger the market doesn't → <b>buy protection cheap</b> (the Ackman setup). Gap ≪ 0 → market too scared → <b>sell protection</b>. The <em>gap</em>, out of sample, is the candidate mispricing.</span>
+    </div>
+
+    <div class="box work">
+      <div class="bt">▸ The Ackman trade in this one language</div>
+      <p>Feb 2020: his model (a human one) said <em>"COVID cascade → corporate defaults spike."</em> The CDS market's implied default probability was still <em>near-calm</em>. Enormous positive gap, and the protection was cheap. He bought it. When the market's implied probability caught up to his model's, the gap closed violently in his favour. Your engine is an attempt to <b>find that gap systematically, across thousands of names.</b></p>
+    </div>
+
+    <h3 class="sub"><span class="n">7.2</span>Where this stands nowadays</h3>
+    <ul class="clean ok">
+      <li><span class="ic">•</span><b>The idea is old and respected.</b> "Structural" default models (Merton, then Moody's KMV / distance-to-default) have compared model-implied vs market-implied default for decades. So the <em>frame</em> is proven and institutional — not a crank idea.</li>
+      <li><span class="ic">•</span><b>It's also hard and mostly efficient.</b> Those models are noisy, and the CDS market is usually right. Simple versions of this gap are well-arbitraged. You will not beat it with a textbook Merton model.</li>
+      <li><span class="ic">•</span><b>What's genuinely new — and your shot.</b> Standard structural models look at <em>one firm in isolation</em>. They do <b>not</b> model a shock <em>propagating through the supply-chain / customer network</em> into a firm's cash flow. An LLM-built, network-aware mechanism could see a default driver that single-name models miss. <em>That</em> is the frontier and the only place the edge can live.</li>
+      <li><span class="ic">•</span><b>Post-2020 reality check.</b> Everyone now runs tail-hedge and convexity desks; cheap convexity is rarer than it was for Ackman. The obvious version is crowded. The non-obvious, network-driven convex node is not — which is exactly why the network model, not the single-name model, is the point.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================ FORECAST ============================ -->
+<section id="forecast">
+  <div class="wrap">
+    <div class="part-label">Part 8 · A guardrail, stated plainly</div>
+    <h2 class="part">Why you don't just ask the LLM to predict the future</h2>
+    <p class="lead-in">It's tempting to think "the LLM simulates the future, I bet on what it says." The evidence says: don't. Here's why, and what to do instead.</p>
+    <ul class="clean no">
+      <li><span class="ic">✗</span><b>Humans still beat it.</b> Trained superforecasters outperform top LLMs on clean forecasting benchmarks (statistically significant). The LLM is not a better crystal ball.</li>
+      <li><span class="ic">✗</span><b>It loses the plot over many steps.</b> As a step-by-step world-simulator, per-step accuracy compounds — roughly 60% right each step becomes <b>&lt;1% after ~10 steps</b>. Long roll-forwards drift into fiction.</li>
+      <li><span class="ic">✗</span><b>Many "superhuman forecasting" claims are leakage.</b> The model had already seen the future in its training data. Treat every such claim as guilty until the knowledge cutoff is proven to be <em>before</em> the event.</li>
+    </ul>
+    <div class="verdict">
+      <div class="vt">So what IS the LLM for</div>
+      <h4>Machine surfaces, human judges.</h4>
+      <p>Use the LLM to <b>build the mechanism and the graph</b> (who depends on whom, which direction a shock pushes), to <b>reason about the consequences of a scenario you hand it</b>, and to <b>generate candidate convex/mispriced names</b>. Then a human decides which scenarios are real, whether the market is asleep, and when to pull the trigger. The LLM is the tireless analyst that maps consequences; it is <em>not</em> the portfolio manager.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ RUN IT ============================ -->
+<section id="run">
+  <div class="wrap">
+    <div class="part-label">Part 9 · Practical</div>
+    <h2 class="part">Should you download the repo and run it?</h2>
+    <p class="lead-in">Short answer: <b>yes — to learn, not to build on.</b> Running one model end-to-end will make everything above click far faster than more reading.</p>
+
+    <div class="grid2">
+      <div class="box good">
+        <div class="bt">▸ Do this (an afternoon)</div>
+        <p><b>1.</b> Clone <code class="inl">github.com/AgentTorch/AgentTorch</code>.<br>
+        <b>2.</b> Start in <code class="inl">tutorials/</code> and <code class="inl">examples/</code>, and use the <code class="inl">MockLLM</code> so you don't need to wire a real model.<br>
+        <b>3.</b> Run the <b>macro-economics</b> model and watch it print <code class="inl">loss.backward()</code> and the per-parameter gradients — that's the whole "train an economy" idea, live.<br>
+        <b>4.</b> Then read one transmission substep to see message-passing move a shock across the graph.</p>
+      </div>
+      <div class="box warn">
+        <div class="bt">▸ Watch out</div>
+        <p><b>Don't start in</b> the two <code class="inl">trainer.py</code> files — they have hardcoded paths and a stale import (<code class="inl">AgentTorch.helpers</code> → now <code class="inl">agent_torch</code>) and will just error.<br>
+        <b>Licence:</b> it's <b>AGPL-3.0</b> — fine as a reference design to learn from, but do <em>not</em> link it into a proprietary fund product. Treat it as a teacher, not a dependency.</p>
+      </div>
+    </div>
+
+    <div class="box take">
+      <div class="bt">▸ The build takeaway</div>
+      <p>For your v1 you re-implement the <b>~20% that matters</b> — a differentiable message-passing graph + gradient calibration — cleanly in your own PyTorch (a few hundred lines). The millions-of-LLM-agents machinery is a <b>v2</b> upgrade, not a prerequisite. Run his repo to <em>understand</em> the mechanism; own your version to <em>trade</em> it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ AI TRENDS ============================ -->
+<section id="trends">
+  <div class="wrap">
+    <div class="part-label">Part 10 · The tailwind</div>
+    <h2 class="part">AI trends that make this buildable now</h2>
+    <p class="lead-in">Three years ago this was a research fantasy. Several fast-moving trends have turned the hard sub-problems into off-the-shelf capabilities. This is the "why now" you'd tell an investor.</p>
+
+    <ul class="clean ok">
+      <li><span class="ic">1</span><b>Reasoning models got real.</b> LLMs went from autocomplete to genuine multi-step reasoning (chain-of-thought, "thinking" models). Reasoning through a causal cascade — the core of your engine — is exactly what they've become good at.</li>
+      <li><span class="ic">2</span><b>Test-time compute + self-consistency.</b> You can now trade dollars for reliability: sample an answer many times and take the consensus. This directly de-noises the LLM's link/sign estimates — the same "15 samples per call" your cost model already assumes.</li>
+      <li><span class="ic">3</span><b>Verifiers &amp; process rewards.</b> The field learned to <em>check reasoning step-by-step</em>, not just the final answer. That's the antidote to your #1 failure mode — <em>narrative hallucination</em> — because you can machine-verify each hop of a claimed cascade.</li>
+      <li><span class="ic">4</span><b>Tool use + execution feedback.</b> Agents now ground their claims in real data and code (query a database, run the numbers, read the result) instead of vibing. Your mechanism's magnitudes come from data, not from the LLM's imagination.</li>
+      <li><span class="ic">5</span><b>Open-weight frontier models.</b> Strong open models (DeepSeek, Qwen, Llama-class) mean you can <b>fix and audit the knowledge cutoff</b> — the single most important leakage guardrail — and self-host cheaply. You can't do point-in-time honesty on a closed API whose training data you can't see.</li>
+      <li><span class="ic">6</span><b>Agentic search / deep research.</b> Automated multi-hop retrieval over filings and news makes <b>building the entity graph</b> — the scarce asset — tractable at scale.</li>
+    </ul>
+
+    <div class="box warn">
+      <div class="bt">▸ The trend that does NOT save you</div>
+      <p>None of this makes LLMs <em>forecasters</em>. The tailwind makes the <b>mechanism-reasoning and verification</b> reliable — not the <b>prediction of which scenario occurs</b>. Ride the first; keep a human on the second.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ CS329A ============================ -->
+<section id="cs329a">
+  <div class="wrap">
+    <div class="part-label">Part 11 · Stanford CS329A</div>
+    <h2 class="part">CS329A: Self-Improving AI Agents — the toolkit you'd steal</h2>
+    <p class="lead-in">You asked what <span class="mono">cs329a.stanford.edu</span> is and how it relates. It's a graduate seminar (Autumn 2025, Aakanksha Chowdhery &amp; Azalia Mirhoseini) on <b>AI agents that improve themselves through interaction</b>. It is <em>not</em> about finance — its value to you is the toolbox that makes an LLM's multi-step reasoning <b>reliable enough to trust in a mechanism</b>.</p>
+
+    <div class="tblwrap">
+      <table class="led">
+        <thead><tr><th>Course technique</th><th>What it is</th><th>How it maps to your engine</th></tr></thead>
+        <tbody>
+          <tr><td>Test-time compute scaling <span class="dim">(Large Language Monkeys; Snell 2024)</span></td><td>Sample an answer many times / think longer to get better answers without retraining.</td><td>Your <b>self-consistency</b> on each link &amp; response estimate. More samples → more trustworthy sign/magnitude of a cascade hop.</td></tr>
+          <tr><td>Verification / process rewards <span class="dim">(Let's Verify Step by Step; Math-Shepherd)</span></td><td>Train a "checker" that validates each reasoning <em>step</em>, not just the final result.</td><td>The <b>direct fix for narrative hallucination</b>: verify every hop ("does X really depend on S?") before it enters the graph. Your leakage/honesty gauntlet.</td></tr>
+          <tr><td>Tool use + RL from execution feedback <span class="dim">(ReAct; RLEF)</span></td><td>Agents call tools, run code, and learn from what actually executes.</td><td>Ground the mechanism's <b>numbers in real financial data</b>, not the LLM's guess. Query fundamentals, compute the pass-through, check it.</td></tr>
+          <tr><td>Multi-step reasoning &amp; planning <span class="dim">(LATS; ADaPT; SPRINT)</span></td><td>Decompose a task into a searched tree of sub-steps.</td><td>Structure the <b>scenario roll-forward</b> as a planned tree of consequences / branches instead of one long fragile chain.</td></tr>
+          <tr><td>Search-enhanced reasoning <span class="dim">(Search-o1; DeepScholar-Bench)</span></td><td>Interleave retrieval with reasoning for research-grade answers.</td><td><b>Build the entity graph</b> by agentic retrieval from filings — the scarce asset in your whole thesis.</td></tr>
+          <tr><td>Bootstrapping reasoning <span class="dim">(STaR; DeepSeekMath; DAPO)</span></td><td>A model generates reasoning, keeps what verifies, and trains on its own successes.</td><td>Improve your extraction model on <b>its own verified-correct link extractions</b> over time — a cheap, compounding data flywheel.</td></tr>
+          <tr><td>Memory &amp; caching <span class="dim">(MemGPT; Cartridges; CacheBlend)</span></td><td>Give agents long-term memory and cache expensive context.</td><td>Exactly your <b>two-loop economics</b>: cache the expensive LLM extraction once; re-run the cheap calibration many times. Point-in-time memory = leakage control.</td></tr>
+          <tr><td>Long-horizon evaluation <span class="dim">(Measuring AI on Long Tasks; GDPVal)</span></td><td>Honest benchmarks for whether agents do real, valuable, multi-step work.</td><td>The discipline for <b>measuring your engine honestly</b> — out-of-sample, cost-aware, no leakage — instead of admiring plausible narratives.</td></tr>
+          <tr><td>Automated agent design <span class="dim">(ADAS; The AI Scientist; AlphaEvolve)</span></td><td>Systems that invent and improve their own agent architectures.</td><td>Aspirational v3: auto-search over <b>scenario structures and graph designs</b> rather than hand-building each. Powerful, and the easiest place to fool yourself — gate it hard.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="box take">
+      <div class="bt">▸ The one-line relationship</div>
+      <p>CS329A doesn't teach you to trade. It teaches you how to make an LLM's <b>reasoning reliable, verified, tool-grounded, and cheap</b> — which is precisely the difference between a mechanism engine you can <em>trust with money</em> and a plausible-story generator. It's the reliability layer under your whole idea.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ MVP ============================ -->
+<section id="mvp">
+  <div class="wrap">
+    <div class="part-label">Part 12 · The test</div>
+    <h2 class="part">An MVP to see if you can actually catch it</h2>
+    <p class="lead-in">The point of an MVP is a <b>fast, honest go/kill</b>: does the mechanism contain real predictive information the market missed, with zero hindsight? Two versions — start with the easy one.</p>
+
+    <h3 class="sub"><span class="n">A</span>The starter MVP — reactive link-spillover <span class="tag v">easiest · tier-1</span></h3>
+    <p>This is the cheapest thing that can teach you something real, and it's the honest first rung toward the Ackman ambition.</p>
+    <div class="pipe">
+      <div class="st"><div class="sn">1 · Pick shocks</div><div class="sd">~100 clean events: a supplier issues a big guidance cut on date D</div></div>
+      <div class="st"><div class="sn">2 · Build graph pre-D</div><div class="sd">Open-weight LLM, cutoff before D, reads pre-D filings: "firm X depends on S"</div></div>
+      <div class="st"><div class="sn">3 · Propagate</div><div class="sd">1–2 hops, one learnable decay coefficient → predict linked firms' 4- &amp; 8-week return</div></div>
+      <div class="st"><div class="sn">4 · Calibrate</div><div class="sd">Fit the decay on earlier shocks; test on strictly later ones</div></div>
+      <div class="st"><div class="sn">5 · Score</div><div class="sd">OOS hit-rate / information ratio vs 3 baselines</div></div>
+    </div>
+    <p><b>Beat these three baselines</b> or you have nothing: (a) the market itself, (b) a plain-LLM sentiment score on the same news, (c) the naïve customer→supplier trade. <b>Go/kill:</b> a stable, economically meaningful edge on the <em>held-out later</em> period, after costs. Compute: hundreds to low-thousands of dollars. Time: a few weeks.</p>
+
+    <h3 class="sub"><span class="n">B</span>The ambition MVP — "re-discover the Ackman trade" <span class="tag s">harder · closer to the dream</span></h3>
+    <p>This tests the scenario/convexity engine directly, as a <b>postdiction under a strict cutoff</b> — can the machine find the asymmetric bet <em>from information available before the event</em>, not with hindsight?</p>
+    <ul class="clean step">
+      <li><span class="ic">1</span><b>Pick a past stress episode</b> with a datable trigger (e.g. early 2020 COVID, or a sharp sector shock). Freeze all information to a <b>cutoff just before</b> it was priced.</li>
+      <li><span class="ic">2</span><b>Hand the engine the scenario</b> ("a broad demand + credit shock of size S") — you supply the branch; the engine maps consequences. This is fair: Ackman also <em>chose</em> the scenario.</li>
+      <li><span class="ic">3</span><b>Rank every entity</b> by (i) convexity ∂²value/∂shock² and (ii) the model-vs-market gap in default probability, using only pre-cutoff data and a cutoff-locked LLM.</li>
+      <li><span class="ic">4</span><b>Check the tape.</b> Did the engine's top-ranked convex / most-underpriced names actually blow out? Would the cheap convex position on them have paid?</li>
+      <li><span class="ic">5</span><b>The leakage test — the whole point.</b> Re-run with the cutoff <em>removed</em>. If it only finds the trade <em>with</em> hindsight, you have leakage, not alpha. Catching it <em>before</em> the cutoff, beating a plain-LLM and a naïve baseline, is the real signal.</li>
+    </ul>
+
+    <div class="verdict">
+      <div class="vt">What "catching it" honestly means</div>
+      <h4>Surfaced before the event, from a locked information set, beating the simple baselines — after costs.</h4>
+      <p>Not "the story sounds right." Not "it found it in hindsight." The bar is: <b>with the clock frozen before the shock</b>, the engine puts the right convex / underpriced names near the top, and that ranking would have made money net of trading costs — and a plain-LLM summary and the naïve baseline would <em>not</em>. Clear that on a couple of independent episodes and you have something worth funding. Fail it, and you've saved yourself a year — which is exactly what a good MVP is for.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ LEDGER ============================ -->
+<section id="ledger">
+  <div class="wrap">
+    <div class="part-label">Part 13 · Keep yourself honest</div>
+    <h2 class="part">What's proven, what's synthesis, what's a bet</h2>
+    <div class="tblwrap">
+      <table class="led">
+        <thead><tr><th>Claim</th><th>Status</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td>AgentTorch is differentiable, population-scale, LLM-composable; COVID 8.4M model calibrates to data; LLM-agents show adaptive behaviour</td><td><span class="tag v">verified</span></td><td>Read from the source + Chopra's defensible claims.</td></tr>
+          <tr><td>Mechanism models give counterfactuals a correlation model can't (Lucas critique)</td><td><span class="tag v">verified</span></td><td>Standard, well-established reasoning.</td></tr>
+          <tr><td>The revenue→default cascade &amp; convexity-search on a firm graph</td><td><span class="tag s">synthesis</span></td><td>My mapping of his machinery onto finance. He never built it. Plausible, unproven.</td></tr>
+          <tr><td>This produces market alpha</td><td><span class="tag h">hypothesis</span></td><td>Unproven. Markets are adversarial; capability ≠ edge. The MVP exists to test exactly this.</td></tr>
+          <tr><td>"Ripple Effect Protocol" / specific sensitivity-sharing numbers</td><td><span class="tag h">retracted</span></td><td>Not verifiable in the source; an earlier pass embellished it. Don't repeat it.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="box take">
+      <div class="bt">▸ The honest pitch, in one breath</div>
+      <p>"Chopra proved you can build a differentiable, LLM-driven simulation of a population and tune it to reality. We're building that engine for the economy — to map a shock's fundamental cascade and surface convex, underpriced bets the way Ackman found IG CDS in 2020. The engine is a capability, not a guarantee; our MVP tests, under a strict information cutoff, whether it beats the simple baselines after costs. If it doesn't, we kill it cheaply."</p>
+    </div>
+  </div>
+</section>
+
+<div class="wide">
+  <div class="foot">
+    UNFOLD CAPITAL · Simulating the Future · built for Daniel · companion to sim-alpha.html &amp; agenttorch-explained.html · Sep 2026 ·
+    verified-vs-synthesis separated on purpose — the regime/scenario bet is a hypothesis, not a result.
+  </div>
+</div>
+
+<script>
+(function(){
+  var btn=document.getElementById('themebtn');
+  btn&&btn.addEventListener('click',function(){
+    var r=document.documentElement;
+    var cur=r.getAttribute('data-theme');
+    if(!cur){cur=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
+    r.setAttribute('data-theme',cur==='dark'?'light':'dark');
+  });
+  var links=[].slice.call(document.querySelectorAll('nav.secs a'));
+  var secs=links.map(function(a){return document.querySelector(a.getAttribute('href'));});
+  function onScroll(){
+    var y=window.scrollY+70,best=0;
+    for(var i=0;i<secs.length;i++){if(secs[i]&&secs[i].offsetTop<=y)best=i;}
+    links.forEach(function(a,i){a.classList.toggle('active',i===best);});
+  }
+  window.addEventListener('scroll',onScroll,{passive:true});onScroll();
+})();
+</script>
+</body>
+</html>
