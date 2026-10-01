@@ -52,6 +52,44 @@ and stable `β2`, and improves net portfolio performance **after costs**.
 | `AI_Native_Hedge_Fund_Research_Memo.docx` | Working research memo (Sept 2026): competitive landscape, the differentiated hypothesis, methodology, and go/no-go criteria. |
 | `sim-alpha.html` | Study notes — *LLMs as World-Simulators for Market Alpha*: papers explained from the ground up, a blunt build-vs-buy verdict, strategy families, data survey, system design, and a 12-week MVP plan. |
 | `agenttorch-explained.html` | Explainer on AgentTorch / Large Population Models and the Ripple Effect Protocol (architecture inspiration). |
+| `simulating-the-future.html` | Deep-dive: Chopra/AgentTorch, convexity search, CS329A, AI trends, and the MVP test. |
+| `references/` | Source material behind the thesis — two archived PDFs plus a cataloged, annotated reading list. See [`references/README.md`](references/README.md). |
+
+## Evidence & foundations
+
+The thesis rests on a chain of outside results. Full summaries and local PDFs are in
+[`references/`](references/README.md); the short version of why each one is here:
+
+- **The market case — HBS, *"Mimicking Finance"* (Cohen, Lu, Nguyen, 2026).** AI can
+  predict ~**71%** of fund managers' quarterly trades, and the *predictable* managers are the
+  ones who *lose* (most-predictable: −0.42% by Q4; least-predictable: +0.4%). *"Prices
+  aren't predictable, but human behavior is."* Edge can't come from a faster version of what
+  every fund already does — it has to come from a different *kind* of reasoning. This sets
+  the bar: be the unpredictable manager.
+
+- **The proof of concept — Meta FAIR, *CWM: Code World Model*.** A 32B LLM mid-trained on
+  execution *trajectories* learns to simulate how code runs, and beats plain code LLMs
+  (65.8% SWE-bench Verified). In a domain with clean ground truth, an LLM **with a world
+  model** beats one that only pattern-matches text. Markets are the same argument with
+  noisier ground truth.
+
+- **The method — Large Population Models (Chopra / MIT Media Lab).** Simulate *populations*
+  of interacting agents, not smarter individual agents; outcomes emerge from the interaction.
+  - **AgentTorch** — the open-source engine. Differentiable (gradients flow through the
+    simulation, so you can *calibrate* to data and *optimize* over interventions) and
+    scalable (millions of agents via LLM "archetypes," one query per unique profile).
+  - **Chopra's PhD thesis** — the formal theory (cognition + coordination modules) and,
+    critically, **Chapter 5 / Lucas's critique**: when does a calibrated simulation survive
+    the world reacting to it? That is this fund's biggest failure mode, named in advance.
+  - **Real-world validation** — an LPM predicted avian-flu spread through poultry/cattle
+    *supply chains* and migration: 100 hotspots flagged, 87 confirmed (MIT Tech Review). The
+    perspective paper frames the goal exactly: *"trace how small changes ripple through an
+    entire population"* to find non-obvious leverage points — which is what an alpha signal is.
+
+**The through-line:** predictable managers lose (HBS) → world-models beat pattern-matchers
+where truth is checkable (CWM) → population simulation can trace real ripple effects through
+supply chains (LPMs). Unfold's wager is to build the *world-model manager* and be the
+unpredictable minority that still earns its fee.
 
 ## Research plan (highlights)
 
@@ -83,5 +121,6 @@ as well, use the simpler system.
 
 ---
 
-*Working research — September 2026. See the memo and study notes for full references
-(FactSet, Man Group, Point72, State Street, AgentTorch / Population AI).*
+*Working research — 2026. See [`references/`](references/README.md) for the annotated source
+list and archived papers, and the memo and study notes for the wider bibliography (FactSet,
+Man Group, Point72, State Street, HBS, Meta FAIR, AgentTorch / Population AI).*
