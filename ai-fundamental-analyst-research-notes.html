@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.27">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>ai-fundamental-analyst-research-notes</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="ai-fundamental-analyst-research-notes_files/libs/clipboard/clipboard.min.js"></script>
+<script src="ai-fundamental-analyst-research-notes_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="ai-fundamental-analyst-research-notes_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="ai-fundamental-analyst-research-notes_files/libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="ai-fundamental-analyst-research-notes_files/libs/quarto-html/popper.min.js"></script>
+<script src="ai-fundamental-analyst-research-notes_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="ai-fundamental-analyst-research-notes_files/libs/quarto-html/anchor.min.js"></script>
+<link href="ai-fundamental-analyst-research-notes_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="ai-fundamental-analyst-research-notes_files/libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="ai-fundamental-analyst-research-notes_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="ai-fundamental-analyst-research-notes_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="ai-fundamental-analyst-research-notes_files/libs/bootstrap/bootstrap-9e3ffae467580fdb927a41352e75a2e0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+
+
+
+<section id="aillm-research-for-fundamental-credit-analysis-notes" class="level1">
+<h1>AI/LLM Research for Fundamental Credit Analysis — Notes</h1>
+<p>Research notes from a survey of recent (2025-2026) published work on using LLMs and AI agents to do the work of a fundamental analyst — compiled with a bias toward fixed income / credit research (issuer surveillance, covenant analysis, coverage scaling) rather than equity stock-picking or systematic/quant strategies.</p>
+<p>Working thesis: this is not a replacement for fundamental analysts, but a way to scale analyst capacity — wider coverage breadth, continuous monitoring, covenant/filings analysis, and first-draft research — while judgment on idiosyncratic credit decisions stays human.</p>
+<hr>
+<section id="academic-agent-architectures" class="level2">
+<h2 class="anchored" data-anchor-id="academic-agent-architectures">Academic / agent architectures</h2>
+<section id="fundapod" class="level3">
+<h3 class="anchored" data-anchor-id="fundapod">FundaPod</h3>
+<p><em>“FundaPod: A Multi-Persona Agent Pod Architecture with Knowledge Graph Memory for AI-Assisted Fundamental Investment Research”</em> (arXiv, 2026) <a href="https://arxiv.org/pdf/2605.27864">arxiv.org/pdf/2605.27864</a></p>
+<p>Proposes a “pod” of LLM agents, each assigned a distinct analyst persona within a research process, backed by a shared knowledge-graph memory so findings persist and compound across sessions instead of being re-derived from scratch each time a question is asked. Explicitly framed around <em>fundamental</em> investment research rather than trading signals — the closest academic analog to a scaled research-team workflow rather than a single-shot chatbot.</p>
+</section>
+<section id="large-language-model-agents-in-finance-a-survey" class="level3">
+<h3 class="anchored" data-anchor-id="large-language-model-agents-in-finance-a-survey">Large Language Model Agents in Finance: A Survey</h3>
+<p><em>“Large Language Model Agents in Finance: A Survey Bridging Research, Practice, and Real-World Deployment”</em> (Findings of ACL / EMNLP 2025, pp.&nbsp;17889-17907) <a href="https://aclanthology.org/2025.findings-emnlp.972/">aclanthology.org/2025.findings-emnlp.972</a></p>
+<p>A systematic, dual-perspective (academic + industry) survey of LLM agents in finance. Introduces a functional taxonomy spanning five domains: data analysis, investment research, trading, investment management, and risk management. Most useful as an orienting map of the field and a jumping-off point for deeper citations — it’s a synthesis, not a single empirical result to lean on.</p>
+<hr>
+</section>
+</section>
+<section id="credit-specific-tooling-and-research" class="level2">
+<h2 class="anchored" data-anchor-id="credit-specific-tooling-and-research">Credit-specific tooling and research</h2>
+<section id="fin" class="level3">
+<h3 class="anchored" data-anchor-id="fin">9fin</h3>
+<p><a href="https://www.9fin.com/">9fin.com</a> — AI credit tools: <a href="https://www.9fin.com/insights/9fin-launches-next-generation-of-ai-tools-for-debt-capital-markets">launch announcement</a> · <a href="https://uk.finance.yahoo.com/news/debt-research-firm-bets-ai-090108773.html">coverage</a></p>
+<p>Debt-market intelligence platform (founded 2016) covering leveraged finance, private credit, and distressed debt, used by 350+ institutions (banks, asset managers, hedge funds, law firms, private credit funds). Recently shipped two AI products: <strong>AI Chat</strong>, which answers covenant/cap-structure/filings questions with responses linked back to source documents, and <strong>Research Grid</strong>, which generates structured, templated cross-issuer comparisons. Notable because the model is grounded in 9fin’s own curated, proprietary credit dataset rather than being a generic LLM wrapper — the closest existing commercial product to a junior credit-analyst tool.</p>
+</section>
+<section id="covenantai" class="level3">
+<h3 class="anchored" data-anchor-id="covenantai">CovenantAI</h3>
+<p>Saunders et al., <em>“CovenantAI — New Insights into Covenant Violations”</em> (SBFC 2025, University of Sydney) <a href="https://sbfc.sydney.edu.au/2025/papers/SBFC2025_6B2_P261.pdf">sbfc.sydney.edu.au/2025/papers/SBFC2025_6B2_P261.pdf</a></p>
+<p>Academic paper using GPT-4o-mini to identify covenants and covenant thresholds directly from SEC filings, and to classify complex renegotiation outcomes (amendments, waivers, technical defaults) — outperforming traditional keyword- and database-driven detection approaches. Directly relevant to the covenant-monitoring slice of a credit analyst’s job rather than valuation or thesis-writing.</p>
+</section>
+<section id="ai-in-private-credit-underwriting-covenant-surveillance-and-the-monitoring-gap" class="level3">
+<h3 class="anchored" data-anchor-id="ai-in-private-credit-underwriting-covenant-surveillance-and-the-monitoring-gap">AI in Private Credit: Underwriting, Covenant Surveillance, and the Monitoring Gap</h3>
+<p>Leigh Coney (SSRN working paper) <a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6898658">papers.ssrn.com/sol3/papers.cfm?abstract_id=6898658</a></p>
+<p>Focuses specifically on the <em>ongoing surveillance</em> half of private credit work, as distinct from initial underwriting — i.e., the continuous monitoring function most analogous to what a credit analyst does across an existing coverage list after a bond/loan is already held. Frames the “monitoring gap” (positions that go unwatched between formal reviews) as the area AI is best suited to close.</p>
+<hr>
+</section>
+</section>
+<section id="industry-practice-whos-actually-building-this" class="level2">
+<h2 class="anchored" data-anchor-id="industry-practice-whos-actually-building-this">Industry practice — who’s actually building this</h2>
+<section id="hedgeweek-avala-global-founder-on-ai-agent-fleets" class="level3">
+<h3 class="anchored" data-anchor-id="hedgeweek-avala-global-founder-on-ai-agent-fleets">Hedgeweek: Avala Global founder on “AI agent fleets”</h3>
+<p><a href="https://www.hedgeweek.com/ai-agent-fleets-could-transform-hedge-fund-research-says-avala-global-founder/">hedgeweek.com — AI agent ‘fleets’ could transform hedge fund research</a></p>
+<p>Divya Nettimi (founder, Avala Global, ~$2bn AUM) predicts that within 3-5 years an analyst who currently covers ~20 names could instead manage a fleet of AI agents covering ~200 — an “order of magnitude” productivity change rather than an incremental one. Same piece references Viking Global’s internal “VikingGPT,” built to let portfolio managers stress-test trade ideas. Both executives quoted in the piece stress that human judgment stays central — interpreting management teams, synthesizing qualitative and quantitative signals, and pattern recognition built over years are explicitly called out as not being automated away.</p>
+</section>
+<section id="lone-pine-capital-co-cio-on-commoditizing-the-base-layer" class="level3">
+<h3 class="anchored" data-anchor-id="lone-pine-capital-co-cio-on-commoditizing-the-base-layer">Lone Pine Capital co-CIO on commoditizing the “base layer”</h3>
+<p>Same Hedgeweek piece as above; Kelly Granat (co-CIO, Lone Pine Capital, ~$19.5bn AUM)</p>
+<p>Notable framing: AI could <strong>“commoditise the base layer” of fundamental analysis</strong> — i.e., standardize and systematize the mechanical, repeatable parts of research across analysts and sectors. Worth sitting with: if the mechanical component of fundamental work becomes systematized and standardized, the line between “fundamental” and “systematic” analysis starts to blur, which has implications for where differentiated alpha in fundamental credit research can still come from.</p>
+<hr>
+</section>
+</section>
+<section id="open-questions-possible-next-steps" class="level2">
+<h2 class="anchored" data-anchor-id="open-questions-possible-next-steps">Open questions / possible next steps</h2>
+<ul>
+<li>What would a covenant-surveillance agent pipeline need architecturally to run continuously across a ~100-200 issuer coverage list (data sources, grounding/RAG design, review cadence, escalation triggers for human review)?</li>
+<li>How do 9fin’s AI Chat and Research Grid actually perform in practice vs.&nbsp;the marketing claims — worth a hands-on trial if accessible.</li>
+<li>Closer look at what BlackRock’s Aladdin Copilot and S&amp;P’s Credit Companion have actually shipped vs.&nbsp;announced, since both are relevant reference points for what a large asset manager’s internal tool could look like.</li>
+</ul>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
