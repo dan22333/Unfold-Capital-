@@ -4,7 +4,7 @@ Source material behind the Unfold Capital thesis. Each entry explains *what it i
 *key claims*, and *why it matters for an AI-native fund* that reasons causally about ripple
 effects rather than curve-fitting on price history.
 
-Two of the six are archived locally as PDFs; the rest are external links.
+Two of the nine are archived locally as PDFs; the rest are external links.
 
 | # | Source | Local copy |
 |---|--------|-----------|
@@ -14,6 +14,9 @@ Two of the six are archived locally as PDFs; the rest are external links.
 | 4 | MIT Technology Review — *Ayush Chopra simulates complex events* | link only |
 | 5 | Meta FAIR — *CWM: Code World Model* | link only |
 | 6 | MIT Media Lab — *What Can We Learn From a Billion Agents?* (perspective) | [`lpm-perspective-billion-agents.pdf`](lpm-perspective-billion-agents.pdf) |
+| 7 | Kacperczyk & Seru (2007, JF) — *Fund Manager Use of Public Information: New Evidence on Managerial Skills* | link only |
+| 8 | Cohen, Polk & Silli — *Best Ideas* | link only |
+| 9 | Phillips et al. — *Detecting Superior Mutual Fund Managers: Evidence from Copycats* | link only |
 
 ---
 
@@ -149,6 +152,76 @@ outcomes back).
 entire population"* is the ripple-effect hypothesis in one line. It frames the differentiable
 population as a tool for finding **non-obvious leverage points** — exactly what an alpha
 signal is: where a shock produces an outsized, under-priced fundamental consequence.
+
+---
+
+## Related literature: manager predictability and skill
+
+Context for Source #1 (HBS / *Mimicking Finance*), found while scrutinizing its methodology.
+The AI-predictability finding sits inside a ~20-year-old academic line of work on
+distinguishing genuine manager skill from replicable, low-value behavior — it is not a novel
+discovery on its own, and some of its oldest cousins have had their original results
+seriously challenged on replication. Read these alongside Source #1, not as a substitute for it.
+
+## 7. "Fund Manager Use of Public Information: New Evidence on Managerial Skills"
+
+**Marcin Kacperczyk & Amit Seru, Journal of Finance (2007).** Lead Article, nominated for the
+Smith-Breeden Award. <https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.2007.01215.x>
+
+**What it is.** A ~19-years-earlier precursor to the HBS predictability result, with a
+different proposed mechanism. Constructs RPI ("Reliance on Public Information") as the R² of
+a regression of a manager's holdings changes on changes in public signals (e.g., analyst
+recommendation revisions).
+
+**Key findings.** High-RPI managers — whose trades are well explained by public information
+alone — have significantly worse performance and lower investor fund flows. The relationship
+holds across specifications.
+
+**Why it matters for Unfold.** Offers a cleaner, more falsifiable mechanism than "predictable
+⇒ low value-add": if your trades are explainable from information everyone already has, you
+hold no private information by definition — no crowding or front-running story is even
+needed. Worth weighing against the newer AI-predictability framing, which conflates several
+possible mechanisms (crowding, lack of private information, mechanical/factor-driven
+processes) into one "predictability" number.
+
+## 8. "Best Ideas"
+
+**Randolph B. Cohen, Christopher Polk & Bernhard Silli (LSE/HBS, 2010).**
+<https://eprints.lse.ac.uk/24471/1/Best%20ideas(published).pdf>
+
+**What it is.** Studies each mutual fund manager's single highest-conviction holding per
+quarter (largest portfolio weight relative to benchmark weight — their "best idea").
+
+**Key findings.** Best ideas outperform the market, and the rest of the same manager's own
+portfolio, by roughly 39–127 bps/month (1–4%/quarter) depending on benchmark and risk model.
+Best ideas are mostly unique to a single manager (not crowded, not consensus). The authors
+argue industry structure (career/tracking-error risk) makes it rational for managers to
+dilute best ideas with less-differentiated, lower-conviction holdings.
+
+**Why it matters for Unfold.** Sixteen years before the 2026 LSTM-based result, this already
+shows the same pattern Source #1's position-level test rediscovers: alpha concentrates in a
+manager's smallest, most idiosyncratic, hardest-to-predict bets, while the bulk of a
+"predictable" portfolio is closer to filler.
+
+## 9. "Detecting Superior Mutual Fund Managers: Evidence from Copycats"
+
+**Phillips et al.**, working paper. <https://api.repository.cam.ac.uk/server/api/core/bitstreams/210e72f7-8b42-4fb1-a037-72bf8ebcd6f5/content>
+
+**What it is.** Builds literal "copycat" portfolios that mechanically replicate a fund's
+*publicly disclosed* holdings (with the standard reporting lag), then uses the gap between a
+fund's real return and its own copycat's return as a market-based skill-detection tool.
+
+**Key findings.** Funds whose true returns persistently exceed what a copycat could achieve
+from disclosed holdings alone are flagged as possessing genuine skill — concentrated in
+trading that happens *between* disclosure dates, where a copycat can't follow.
+
+**Why it matters for Unfold.** This is the direct cross-manager test that Source #1 doesn't
+run: can an outside party, using only public filings (not a manager's own trained-on-itself
+history), actually mimic a specific manager profitably? It's the closest existing evidence to
+testing the front-running/crowding mechanism itself, related literature (Verbeek & Wang,
+*"Better than the Original? The Relative Success of Copycat Funds,"* JBF) finds copycats can
+match originals net of costs — directly relevant to whether "predictability" would really get
+arbitraged away in practice.
 
 ---
 
