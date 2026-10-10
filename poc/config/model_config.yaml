@@ -1,0 +1,55 @@
+# Minimal AgentTorch Config for the trader-archetype POC.
+# One dummy "market" agent (number=1) — we don't need a population of agents
+# in AgentTorch's sense here, just its Config/Registry/Runner/Substep engine
+# driving one Observation -> Policy -> Transition pass per training step.
+
+simulation_metadata:
+  device: 'cpu'
+  num_episodes: 1
+  num_steps_per_episode: 1
+  num_substeps_per_step: 1
+  calibration: false
+  visualize: false
+
+state:
+  environment: {}
+  objects: {}
+  network: {}
+  agents:
+    market:
+      number: 1
+      properties:
+        predicted_return:
+          name: 'Predicted Return'
+          learnable: false
+          shape:
+            - 1
+            - 1
+          dtype: 'float'
+          value: 0.0
+          initialization_function: null
+
+substeps:
+  '0':
+    name: 'DecideAndPredict'
+    description: 'Archetypes state a stance; sensitivity converts it to a predicted return'
+    active_agents:
+      - 'market'
+    observation:
+      market: null
+    policy:
+      market:
+        decide_stance:
+          generator: 'DecideStance'
+          arguments: null
+          input_variables: {}
+          output_variables:
+            - aggregate_stance
+    transition:
+      compute_prediction:
+        generator: 'ComputePrediction'
+        arguments: null
+        input_variables:
+          predicted_return: 'agents/market/predicted_return'
+        output_variables:
+          - predicted_return
