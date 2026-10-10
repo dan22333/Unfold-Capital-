@@ -1,23 +1,39 @@
-"""Trader archetype definitions for the AgentTorch POC.
+"""Trader archetype definitions.
 
-Three persona types, matching AgentTorch's Archetype(n_arch=3) usage: one LLM
-call per archetype per observation, not one call per agent. Each archetype
-gets the same real recent-price context; only its persona description differs.
+Disposition-based, not conclusion-coded: each persona keeps its real
+directional instinct (that's what makes it a recognizable archetype rather
+than a blank slate), but is explicitly told to use judgment about how
+strongly the data in front of it actually supports that instinct, rather
+than mechanically restating its label's conclusion regardless of evidence.
 """
 
 ARCHETYPES = [
     {
         "name": "momentum",
         "description": (
-            "a momentum trader who believes recent price moves tend to continue "
-            "in the same direction"
+            "a momentum-oriented investor: your instinct is that a real recent price "
+            "trend tends to continue, and you generally lean with it. But use judgment "
+            "about how clean or convincing the trend actually looks in the data below, "
+            "and temper your confidence when it doesn't look that way"
         ),
     },
     {
         "name": "contrarian",
         "description": (
-            "a contrarian trader who believes large recent price moves tend to "
-            "overshoot and partially reverse"
+            "a contrarian-oriented investor: your instinct is that a large or stretched "
+            "recent price move tends to partially reverse, and you generally lean against "
+            "it. But use judgment about whether the move actually looks stretched versus "
+            "still building, and temper your confidence when it's unclear"
+        ),
+    },
+    {
+        "name": "fundamentals",
+        "description": (
+            "a fundamentals-oriented investor: you are generally skeptical of short-term "
+            "price moves unless they reflect a real change in the underlying business, "
+            "which you cannot observe here. You default to modest, low-confidence "
+            "stances, growing more confident only when a move looks too large to be "
+            "ordinary noise"
         ),
     },
     {
@@ -31,13 +47,17 @@ ARCHETYPES = [
 
 PROMPT_TEMPLATE = (
     # AgentTorch's PromptManager extracts {variable} names with a plain regex
-    # that doesn't understand Python format specs (e.g. "{price:.2f}" gets
-    # parsed as a literal key "price:.2f", not "price") — so every value here
-    # must be pre-formatted to a display-ready string before being passed in,
-    # and placeholders must be bare names with no ":" spec.
-    "{ticker} closed at ${price} on {date}, a {pct_change}% move over "
-    "the past {window} trading days. You are {persona}. "
-    "What is your stance on {ticker} right now? "
-    "Answer with a single number from -1 (strongly bearish) to 1 (strongly "
-    "bullish), and nothing else — no words, no explanation."
+    # that doesn't understand Python format specs -- every value here must be
+    # pre-formatted to a display-ready string before being passed in, and
+    # placeholders must be bare names with no ":" spec.
+    "{ticker}'s daily returns over the last {window} trading days were: "
+    "{returns_series}. It closed at ${price} on {date}.\n\n"
+    "You are {persona}.\n\n"
+    "In 1-2 sentences, reason about what this recent price action suggests, "
+    "staying true to your investing style but using your own judgment about "
+    "how strongly the evidence above actually supports it. Then on a new "
+    "line write exactly 'Stance: ' followed by a single number from -1 "
+    "(strongly bearish) to 1 (strongly bullish). Use values near 0 when "
+    "you're genuinely unsure or the evidence is mixed -- not only when "
+    "you're at an extreme."
 )

@@ -1,5 +1,7 @@
-"""Produces the POC's actual deliverable: proof the mechanism runs end to
-end on real data, not a claim of predictive validity (n=1 event).
+"""Checkpoint 2's actual deliverable: does the raw archetype signal correlate
+with what really happened, across 372 un-curated examples -- not a claim of
+a tradeable strategy (no costs, no portfolio construction, no significance
+testing), but a real step up from Checkpoint 1's single hand-picked event.
 """
 
 import json
@@ -10,26 +12,44 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from src.train import train
-from src import shocks, substeps
+from src import substeps
 from config.archetypes import ARCHETYPES
-from config.event_data import SHOCK_ANCHOR_DATE
 
 OUT_DIR = pathlib.Path(__file__).resolve().parents[1] / "outputs"
+EXAMPLES_PATH = OUT_DIR / "examples.json"
+
+
+def pearson(x, y) -> float:
+    return float(np.corrcoef(x, y)[0, 1])
 
 
 def main():
-    losses, runner = train()
-    predicted = runner.state["agents"]["market"]["predicted_return"].item()
+    losses, runner, target = train()
+    predicted = runner.state["agents"]["market"]["predicted_return"].detach().numpy().ravel()
+    target_np = target.numpy().ravel()
+    sensitivity = substeps.SENSITIVITY.item()
 
-    prices = shocks.load_prices()
-    realized = shocks.realized_forward_returns(prices)
+    records = json.loads(EXAMPLES_PATH.read_text())
+    aggregate_stances = np.array([r["aggregate_stance"] for r in records])
+    targets = np.array([r["target"]["mean"] for r in records])
+    tickers = [r["ticker"] for r in records]
 
-    cache = json.loads(substeps.CACHE_PATH.read_text())
-    stances = next(iter(cache.values()))["stances"]
+    overall_corr = pearson(aggregate_stances, targets)
+    per_ticker_corr = {}
+    for ticker in sorted(set(tickers)):
+        idx = [i for i, t in enumerate(tickers) if t == ticker]
+        per_ticker_corr[ticker] = pearson(aggregate_stances[idx], targets[idx])
+
+    # per-archetype correlation: does any single persona's raw stance alone correlate better?
+    per_archetype_corr = {}
+    for a_idx, a in enumerate(ARCHETYPES):
+        stances = np.array([r["archetypes"][a_idx]["stance"] for r in records])
+        per_archetype_corr[a["name"]] = pearson(stances, targets)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -38,53 +58,65 @@ def main():
     plt.plot(losses)
     plt.xlabel("training step")
     plt.ylabel("MSE loss")
-    plt.title("Calibration of `sensitivity` via AgentTorch's differentiable Runner")
+    plt.title(f"Calibration over {len(records)} examples")
     plt.tight_layout()
     plt.savefig(OUT_DIR / "loss_curve.png", dpi=120)
     plt.close()
 
-    # Predicted vs actual
-    rows = []
-    for horizon, actual in realized.items():
-        rows.append({"horizon": horizon, "predicted": predicted, "actual": actual})
-
-    plt.figure(figsize=(5, 5))
-    xs = [r["predicted"] for r in rows]
-    ys = [r["actual"] for r in rows]
-    lim = max(abs(v) for v in xs + ys) * 1.3 or 1.0
-    plt.scatter(xs, ys)
-    for r in rows:
-        plt.annotate(r["horizon"], (r["predicted"], r["actual"]))
-    plt.plot([-lim, lim], [-lim, lim], linestyle="--", color="gray")
-    plt.xlim(-lim, lim)
-    plt.ylim(-lim, lim)
-    plt.xlabel("predicted return (sensitivity x aggregate archetype stance)")
-    plt.ylabel(f"actual realized return ({SHOCK_ANCHOR_DATE} shock)")
-    plt.title("Predicted vs. actual — n=1 event, not a signal")
+    # Scatter: predicted vs actual, colored by ticker
+    plt.figure(figsize=(6, 6))
+    colors = {"AAPL": "tab:blue", "NVDA": "tab:orange", "JPM": "tab:green"}
+    for ticker in sorted(set(tickers)):
+        idx = [i for i, t in enumerate(tickers) if t == ticker]
+        plt.scatter(predicted[idx], target_np[idx], s=14, alpha=0.6,
+                    label=ticker, color=colors.get(ticker))
+    lim = max(abs(predicted).max(), abs(target_np).max()) * 1.1
+    plt.plot([-lim, lim], [-lim, lim], linestyle="--", color="gray", linewidth=1)
+    plt.xlabel("predicted return (sensitivity x aggregate stance)")
+    plt.ylabel("actual realized return")
+    plt.title(f"n={len(records)} examples, overall correlation r={overall_corr:.3f}")
+    plt.legend()
     plt.tight_layout()
     plt.savefig(OUT_DIR / "predicted_vs_actual.png", dpi=120)
     plt.close()
 
-    with open(OUT_DIR / "predicted_vs_actual.csv", "w") as f:
-        f.write("horizon,predicted,actual\n")
-        for r in rows:
-            f.write(f"{r['horizon']},{r['predicted']:.4f},{r['actual']:.4f}\n")
+    # Sample reasoning: pick a few examples spanning different archetypes/tickers/stance extremes
+    sorted_by_stance = sorted(records, key=lambda r: r["aggregate_stance"])
+    sample_records = [
+        sorted_by_stance[0],                              # most bearish aggregate
+        sorted_by_stance[len(sorted_by_stance) // 2],      # near-neutral
+        sorted_by_stance[-1],                              # most bullish aggregate
+    ]
+    # one more: the single largest |reasoning vs stance disagreement| isn't tracked here,
+    # so just add a couple more spread across tickers for variety.
+    for ticker in ["NVDA", "JPM"]:
+        for r in records:
+            if r["ticker"] == ticker:
+                sample_records.append(r)
+                break
 
-    print("\n=== Final result ===")
-    print(f"Learned sensitivity: {substeps.SENSITIVITY.item():.4f}")
-    print(f"Aggregate archetype stance (fixed input): mean of {stances}")
-    print("\nPer-archetype stance on the real Jan 2-3 2019 AAPL shock day:")
-    for a, s in zip(ARCHETYPES, stances):
-        print(f"  {a['name']:>10}: {s:+.2f}")
-    print(f"\n{'horizon':<8}{'predicted':>12}{'actual':>12}")
-    for r in rows:
-        print(f"{r['horizon']:<8}{r['predicted']:>12.4f}{r['actual']:>12.4f}")
-    print(
-        "\nNote: momentum and contrarian point in opposite directions here because the "
-        "real outcome was a sharp rebound after the guidance-cut shock -- contrarian's "
-        "call was directionally right, momentum's wasn't. One event, three archetypes: "
-        "illustrative of the mechanism, not a validated signal."
-    )
+    results = {
+        "n_examples": len(records),
+        "tickers": sorted(set(tickers)),
+        "learned_sensitivity": sensitivity,
+        "overall_correlation": overall_corr,
+        "per_ticker_correlation": per_ticker_corr,
+        "per_archetype_correlation": per_archetype_corr,
+        "losses": losses,
+        "scatter": [
+            {"ticker": r["ticker"], "date": r["date"], "aggregate_stance": r["aggregate_stance"],
+             "predicted": sensitivity * r["aggregate_stance"], "actual": r["target"]["mean"]}
+            for r in records
+        ],
+        "sample_reasoning": sample_records,
+    }
+    (OUT_DIR / "results.json").write_text(json.dumps(results, indent=2))
+
+    print(f"\n=== Checkpoint 2 results ({len(records)} examples, {len(set(tickers))} tickers) ===")
+    print(f"Learned sensitivity: {sensitivity:.4f}")
+    print(f"Overall correlation (raw aggregate_stance vs realized return): r = {overall_corr:.4f}")
+    print("Per-ticker correlation:", per_ticker_corr)
+    print("Per-archetype correlation (does one persona alone do better?):", per_archetype_corr)
     print(f"\nWrote outputs to {OUT_DIR}")
 
 

@@ -1,7 +1,10 @@
-# Minimal AgentTorch Config for the trader-archetype POC.
-# One dummy "market" agent (number=1) — we don't need a population of agents
-# in AgentTorch's sense here, just its Config/Registry/Runner/Substep engine
-# driving one Observation -> Policy -> Transition pass per training step.
+# AgentTorch Config for the trader-archetype POC.
+# The "market" population size IS the number of (ticker, date) examples --
+# set at runtime in Python (config["state"]["agents"]["market"]["number"] = N,
+# right after read_config() and before Runner(...)) since it depends on how
+# many examples market_context.generate_examples() produces. predicted_return's
+# shape interpolates off it, the same ${state.agents.<type>.number} pattern
+# the shipped predator_prey model uses for population-sized properties.
 
 simulation_metadata:
   device: 'cpu'
@@ -17,13 +20,13 @@ state:
   network: {}
   agents:
     market:
-      number: 1
+      number: 1  # overwritten at runtime to N examples, see note above
       properties:
         predicted_return:
           name: 'Predicted Return'
           learnable: false
           shape:
-            - 1
+            - ${state.agents.market.number}
             - 1
           dtype: 'float'
           value: 0.0

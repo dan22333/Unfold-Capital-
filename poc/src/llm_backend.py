@@ -41,8 +41,16 @@ agent_memory.LangchainMemoryHandler.save_memory = _patched_langchain_save_memory
 
 
 def _extract_float_in_range(text: str, lo: float = -1.0, hi: float = 1.0) -> float | None:
+    # Prefer the explicit "Stance: <number>" line the prompt asks for; fall
+    # back to the last in-range number anywhere in the text for robustness
+    # against small models that drop the "Stance:" label.
+    stance_match = re.search(r"stance\s*:?\s*(-?\d*\.?\d+)", text, re.IGNORECASE)
+    if stance_match:
+        value = float(stance_match.group(1))
+        if lo <= value <= hi:
+            return value
     matches = re.findall(r"-?\d*\.?\d+", text)
-    for m in matches:
+    for m in reversed(matches):
         try:
             value = float(m)
         except ValueError:
@@ -52,8 +60,12 @@ def _extract_float_in_range(text: str, lo: float = -1.0, hi: float = 1.0) -> flo
     return None
 
 
-def query_stance(prompt: str, model: str = MODEL, retries: int = 1) -> float:
-    """Query the local model for a stance in [-1, 1]. Falls back to 0.0 (neutral)."""
+def query_stance_and_reasoning(prompt: str, model: str = MODEL, retries: int = 1) -> tuple:
+    """Query the local model for (stance, raw_reasoning_text). Falls back to
+    (0.0, raw_text) if no in-range number can be parsed -- never silently
+    drops the raw text, which is what the dashboard shows as chain of
+    thought.
+    """
     last_raw = None
     for attempt in range(retries + 1):
         response = ollama.chat(model=model, messages=[{"role": "user", "content": prompt}])
@@ -61,9 +73,15 @@ def query_stance(prompt: str, model: str = MODEL, retries: int = 1) -> float:
         last_raw = raw
         value = _extract_float_in_range(raw)
         if value is not None:
-            return value
+            return value, raw
     print(f"WARNING: could not parse a stance in [-1, 1] from model output: {last_raw!r}. Using 0.0.")
-    return 0.0
+    return 0.0, last_raw
+
+
+def query_stance(prompt: str, model: str = MODEL, retries: int = 1) -> float:
+    """Query the local model for a stance in [-1, 1]. Falls back to 0.0 (neutral)."""
+    value, _ = query_stance_and_reasoning(prompt, model=model, retries=retries)
+    return value
 
 
 class OllamaLLM(LLMBackend):
@@ -78,19 +96,26 @@ class OllamaLLM(LLMBackend):
         super().__init__()
         self.backend = "langchain"
         self.model = model
+        self.last_raw_responses = []  # same order as prompt_list / population rows
 
     def initialize_llm(self):
         return self  # no separate predictor object needed; prompt() calls Ollama directly
 
     def prompt(self, prompt_list):
-        # Must return plain strings, not floats: AgentTorch's memory-saving
-        # path (LLMArchetype.__call__ -> save_memory) expects a
-        # string/subscriptable output like the other backends return, and
-        # does its own float(...) conversion downstream in Behavior.
+        # Must return plain strings parseable as floats, not the raw
+        # reasoning text: AgentTorch's own aggregation
+        # (Behavior.get_sampled_behavior) does float(output_value) directly
+        # on whatever this returns. The raw text (reasoning + stance line)
+        # is stashed on self.last_raw_responses instead, in the same order,
+        # for the caller to pull out separately.
         outputs = []
+        raw_responses = []
         for item in prompt_list:
             query = item["agent_query"] if isinstance(item, dict) else item
-            outputs.append(str(query_stance(query, model=self.model)))
+            value, raw = query_stance_and_reasoning(query, model=self.model)
+            outputs.append(str(value))
+            raw_responses.append(raw)
+        self.last_raw_responses = raw_responses
         return outputs
 
 
