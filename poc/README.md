@@ -49,6 +49,93 @@ zero. Momentum is the archetype whose raw stance correlates best on its own
 (+0.11), still weak. This is the honest result of a non-cherry-picked test —
 not a validated signal, but a real, interpretable one to build from.
 
+## Architecture, stack, and runtime
+
+**Pipeline** (each stage is a separate module, runnable standalone):
+
+1. `src/pull_data.py` — one batched `yfinance` call for all tickers, written
+   long-format to `data/raw/prices.csv`.
+2. `src/market_context.py` — `generate_examples()` mechanically enumerates
+   every (ticker, date) with enough lookback/forward-return runway (the
+   bias fix); `recent_price_context()` builds the 15-day trailing-returns
+   prompt context; `realized_target()` computes the 4wk/8wk forward return.
+3. `config/archetypes.py` + `config/build_population.py` — 4 persona
+   descriptions, compiled into a tiny real AgentTorch population
+   (`config/trader_population/`: `persona.pickle` + `mapping.json`) via its
+   actual `LoadPopulation`/`PromptManager` grouping mechanism.
+4. `src/llm_backend.py` — `OllamaLLM(LLMBackend)`, a custom backend routing
+   through local Ollama (AgentTorch's shipped `LangchainLLM` hardcodes
+   OpenAI), capturing each call's full reasoning text alongside the parsed
+   stance; includes one monkeypatch for a confirmed AgentTorch bug.
+5. `config/model_config.yaml` + `src/substeps.py` — the actual AgentTorch
+   model. `DecideStance` (Policy) builds `Archetype`/`Behavior` once, then
+   loops all 372 examples calling `behavior.sample()` (cached per-example),
+   producing an `[N, 1]` `aggregate_stance` tensor. `ComputePrediction`
+   (Transition) multiplies it by the one learnable `SENSITIVITY` scalar,
+   vectorized across the whole population in one `Runner.step()`.
+6. `src/train.py` — builds the `[N, 1]` real-target tensor, runs Adam/MSE
+   for 800 steps with genuine `torch.autograd` backprop through the real
+   AgentTorch forward pass.
+7. `src/evaluate.py` — correlation stats (overall/per-ticker/per-archetype),
+   scatter data, a sampled-reasoning subset; writes `outputs/*.json` and the
+   matplotlib PNGs; the published dashboard reads `dashboard_data.json`.
+
+**Stack:** Python 3.13 venv (`poc/.venv`); `agent_torch==0.6.0`,
+`torch==2.14.1`, `torch_geometric==2.8.0`; `langchain==0.3.27` pinned
+(latest 1.4.x breaks AgentTorch's legacy memory/chains API — see rough
+edges below); local `llama3.1:8b` via Ollama, GPU-accelerated on this
+machine; `yfinance`/`pandas`/`numpy`/`matplotlib`. `requirements.txt` is a
+full `pip freeze`, not just top-level packages, because of the version
+landmines hit getting here.
+
+**Datasets:** AAPL, NVDA, JPM daily adjusted close from `yfinance`, pulled
+2023-11-15 → 2024-09-15 (buffer for lookback/forward-return), evaluated over
+every trading day in 2024-01-02 → 2024-06-28 (372 examples, 124/ticker). Note
+the existing `sim-alpha.html` doc already flags `yfinance` as prototyping-only,
+not for rigorous backtests — fine for this purpose, not for the next one.
+
+**What's working right now:** the full pipeline runs end to end via
+`python run_poc.py`; all ~1,500 LLM calls (372 examples × 4 archetypes) are
+cached by content hash to `cache/archetype_responses.json`, so re-running
+analysis/training/dashboard code costs nothing further; the dashboard is
+published and live.
+
+**Runtime & scalability:** data-gathering is the only slow part — observed
+roughly 1-1.5s/call on this GPU, so ~5s/example (4 calls), ~25-30 minutes
+for the full 372-example run (done in 2-3 sittings only because of the tool
+runtime's 10-minute cap, not the model). Calls are fully sequential, no
+batching/concurrency yet. Training itself is not a bottleneck at all —
+vectorized, cached data means 800 gradient steps run in a couple of
+seconds. Scaling is roughly linear in `tickers × days × archetypes`: 10x
+the current scope (e.g. 10 tickers × 2 years) would be several hours
+sequential at this rate — real before that, we'd want either concurrent
+Ollama requests (untested how many it handles well) or batching multiple
+archetypes into one call, not a faster trained-parameter step.
+
+**Alignment with AgentTorch:** this is a genuine use of the real engine, not
+a mock or a bypass. `Config`/`Registry`/`Runner`/`Substep` genuinely drive
+every training step; `Archetype`/`Behavior`/`LoadPopulation`/`PromptManager`
+are AgentTorch's real LLM-archetype mechanism (one call per persona group,
+broadcast via population) — here, the population dimension is repurposed to
+be the 372 examples rather than millions of synthetic agents, which still
+benefits from real vectorization (all 372 predictions in one `Runner.step()`
+call) and is arguably a more interesting use of the tensor-population design
+than a population-of-one. Known departures from "pure" AgentTorch idiom:
+a plain global `nn.Parameter` instead of its config-driven `calibrate_*`
+convention (not worth reverse-engineering for one parameter), a custom
+`LLMBackend` subclass instead of the shipped OpenAI-only one (a documented,
+supported extension point), and one bug patched in its own code.
+
+**What the result says:** a 4-archetype LLM ensemble reacting *only* to
+recent price action — no news, no fundamentals, no company-specific
+information — shows no robust cross-sectional signal over an un-curated
+sample. That's informative on its own: if there's real signal here, it
+probably isn't going to come from "LLM applies a trading heuristic to a
+price series," which is closer to what classical quant signals already do
+and can do faster without an LLM. It's consistent with this repo's own
+broader thesis (`../sim-alpha.html`) that the edge has to come from causal
+reasoning about actual events and propagation, not price-pattern reactions.
+
 ## Dashboard
 
 Published separately as a Claude Artifact (ask for the link) — correlation
