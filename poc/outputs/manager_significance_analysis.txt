@@ -1,0 +1,48 @@
+
+=== Manager stance -- naive (all 372, overlapping windows) ===
+                n        r         p
+overall       372    0.142    0.0060
+AAPL          124    0.323    0.0002
+JPM           124   -0.156    0.0828
+NVDA          124   -0.077    0.3949
+
+=== Manager stance -- block-sampled, stride=20 ===
+                n        r         p
+overall        21    0.545    0.0106
+AAPL            7    0.591    0.1623
+JPM             7   -0.143    0.7595
+NVDA            7    0.493    0.2606
+
+=== Manager stance -- block-sampled, stride=40 (non-overlapping) ===
+                n        r         p
+overall        12    0.505    0.0942
+AAPL            4    0.683    0.3165
+JPM             4   -0.094    0.9061
+NVDA            4    0.151    0.8493
+
+=== For comparison: flat average aggregate_stance, same records ===
+
+=== Aggregate (flat average) -- naive ===
+                n        r         p
+overall       372    0.035    0.4958
+AAPL          124    0.312    0.0004
+JPM           124   -0.204    0.0229
+NVDA          124   -0.239    0.0076
+
+=== Aggregate -- block-sampled, stride=20 ===
+                n        r         p
+overall        21    0.310    0.1715
+AAPL            7    0.602    0.1526
+JPM             7    0.044    0.9258
+NVDA            7    0.171    0.7141
+
+=== Aggregate -- block-sampled, stride=40 ===
+                n        r         p
+overall        12    0.315    0.3182
+AAPL            4    0.635    0.3650
+JPM             4    0.685    0.3146
+NVDA            4   -0.455    0.5451
+
+=== Manager vs. flat average: how different is it? ===
+correlation(manager, flat_average) = 0.645
+mean |manager - flat_average|       = 0.236
