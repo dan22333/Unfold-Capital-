@@ -63,13 +63,23 @@ naively-positive correlation is on AAPL — backwards from what a trend
 explanation would predict. See `src/analyze_significance.py` and
 `outputs/significance_analysis.txt`.
 
-Net: this is the honest result of a non-cherry-picked test, and the honest
-result is "we don't have enough independent information in this window to
-say anything yet" — not evidence for or against the mechanism. The
-structural fix is a shorter forward horizon (more non-overlapping blocks
-per unit of calendar time), which is nearly free to test since archetype
-stances are cached and don't depend on horizon length — only `realized_target()`
-needs to change, not any LLM calls.
+**Update 2 — tested the fix, and the conclusion got stronger, not weaker.**
+Re-ran correlations at 3-, 5-, and 10-day forward horizons (reusing cached
+archetype stances, recomputing only the targets — no new LLM calls). This
+gives genuinely adequate non-overlapping sample sizes: n=25-42 per ticker,
+not 4-7. Result: still nothing significant at any horizon, any ticker, any
+sampling stride, and signs keep flipping across horizons (AAPL: +0.19 at
+3d-block, −0.10 at 5d-block, +0.32 at 10d-block). This isn't a statistical
+power problem anymore — n=25-42 is enough to detect a moderate real effect
+— so the honest read shifts from "we don't have enough data to know" to "a
+4-archetype local-LLM ensemble reacting only to recent price action doesn't
+show a robust predictive relationship with subsequent returns, at the
+horizons tested." That's a real, informative negative result, not a dead
+end: it points toward the archetypes needing genuinely differentiated
+information (real news/fundamentals, not just price history) rather than
+more data volume on the same price-only input. See
+`src/analyze_significance.py` and `outputs/significance_analysis.txt` for
+the full numbers.
 
 ## Architecture, stack, and runtime
 

@@ -35,6 +35,52 @@ AAPL            4    0.635    0.3650
 JPM             4    0.685    0.3146
 NVDA            4   -0.455    0.5451
 
+=== Short-horizon re-test (reuses cached stances, recomputes targets only) ===
+Does a shorter forward horizon give enough non-overlapping blocks to say anything?
+
+
+=== Naive, 3d horizon (n per ticker unchanged) ===
+                n        r         p
+overall       372    0.027    0.5976
+AAPL          124    0.133    0.1415
+JPM           124   -0.118    0.1905
+NVDA          124   -0.060    0.5053
+
+=== Block-sampled, 3d horizon, stride=3 (non-overlapping) ===
+                n        r         p
+overall       126   -0.036    0.6892
+AAPL           42    0.192    0.2223
+JPM            42   -0.169    0.2833
+NVDA           42   -0.262    0.0941
+
+=== Naive, 5d horizon (n per ticker unchanged) ===
+                n        r         p
+overall       372    0.023    0.6626
+AAPL          124    0.093    0.3030
+JPM           124   -0.190    0.0343
+NVDA          124   -0.043    0.6363
+
+=== Block-sampled, 5d horizon, stride=5 (non-overlapping) ===
+                n        r         p
+overall        75    0.148    0.2046
+AAPL           25   -0.097    0.6434
+JPM            25   -0.011    0.9584
+NVDA           25    0.326    0.1114
+
+=== Naive, 10d horizon (n per ticker unchanged) ===
+                n        r         p
+overall       372    0.067    0.1969
+AAPL          124    0.230    0.0103
+JPM           124   -0.201    0.0254
+NVDA          124   -0.057    0.5294
+
+=== Block-sampled, 10d horizon, stride=10 (non-overlapping) ===
+                n        r         p
+overall        39    0.157    0.3387
+AAPL           13    0.318    0.2896
+JPM            13   -0.390    0.1882
+NVDA           13    0.184    0.5467
+
 === Per-ticker regime context (eval window) ===
 AAPL   total_return=+13.8%  annualized_vol=24.2%  trend_r(price vs time)=+0.366
 JPM    total_return=+19.0%  annualized_vol=18.8%  trend_r(price vs time)=+0.879

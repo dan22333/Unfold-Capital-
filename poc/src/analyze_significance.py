@@ -87,6 +87,29 @@ def main():
         blocked = block_sample(records, stride)
         report_correlations(blocked, label)
 
+    print("\n=== Short-horizon re-test (reuses cached stances, recomputes targets only) ===")
+    print("Does a shorter forward horizon give enough non-overlapping blocks to say anything?\n")
+    prices_by_ticker = {}
+    prices_df_all = pd.read_csv(PRICES_PATH, parse_dates=["date"])
+    for ticker in tickers:
+        prices_by_ticker[ticker] = (
+            prices_df_all[prices_df_all["ticker"] == ticker].sort_values("date").set_index("date")["close"]
+        )
+
+    for horizon_days in (3, 5, 10):
+        short_records = []
+        for rec in records:
+            s = prices_by_ticker[rec["ticker"]]
+            as_of_idx = s.index.get_loc(pd.Timestamp(rec["date"]))
+            if as_of_idx + horizon_days >= len(s):
+                continue
+            target = float(s.iloc[as_of_idx + horizon_days] / s.iloc[as_of_idx] - 1.0)
+            short_records.append({**rec, "target": {"mean": target}})
+
+        report_correlations(short_records, f"Naive, {horizon_days}d horizon (n per ticker unchanged)")
+        blocked = block_sample(short_records, horizon_days)
+        report_correlations(blocked, f"Block-sampled, {horizon_days}d horizon, stride={horizon_days} (non-overlapping)")
+
     print("\n=== Per-ticker regime context (eval window) ===")
     prices_df = pd.read_csv(PRICES_PATH, parse_dates=["date"])
     for ticker in tickers:
