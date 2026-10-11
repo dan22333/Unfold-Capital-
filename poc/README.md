@@ -43,11 +43,33 @@ Checkpoint 1's population-of-one.
 **Result:** pooled across all 372 examples, the raw archetype signal (before
 sensitivity scaling) shows essentially no correlation with what actually
 happened (r ≈ 0.035). Broken down by ticker, AAPL alone shows a modest
-positive correlation (+0.31) while NVDA and JPM are negative (−0.24, −0.20)
-— the sign flips by ticker, which is what washes the pooled number to near
-zero. Momentum is the archetype whose raw stance correlates best on its own
-(+0.11), still weak. This is the honest result of a non-cherry-picked test —
-not a validated signal, but a real, interpretable one to build from.
+positive correlation (+0.31, naively p=0.0004) while NVDA and JPM are
+negative (−0.24, −0.20) — the sign flips by ticker, which is what washes the
+pooled number to near zero.
+
+**Update — that per-ticker correlation doesn't survive a proper
+independence check.** The 124 "examples" per ticker aren't 124 independent
+observations: each one's forward-return target window (20-40 trading days)
+overlaps 95%+ with its neighbors', which inflates the naive p-values.
+Resampled to genuinely non-overlapping windows, the honest n drops to 4-7
+per ticker, nothing is statistically significant, and the correlation signs
+become unstable across different sampling strides (JPM: −0.20 → +0.04 →
++0.69; NVDA: −0.24 → +0.17 → −0.46 depending on stride) — sign instability
+that size is itself evidence of noise, not signal. A regime explanation
+(momentum working better in trending markets) doesn't hold up either: NVDA
+and JPM were the strongly-trending tickers in H1 2024 (trend_r 0.93, 0.88)
+and AAPL was comparatively choppy (trend_r 0.37), but momentum's only
+naively-positive correlation is on AAPL — backwards from what a trend
+explanation would predict. See `src/analyze_significance.py` and
+`outputs/significance_analysis.txt`.
+
+Net: this is the honest result of a non-cherry-picked test, and the honest
+result is "we don't have enough independent information in this window to
+say anything yet" — not evidence for or against the mechanism. The
+structural fix is a shorter forward horizon (more non-overlapping blocks
+per unit of calendar time), which is nearly free to test since archetype
+stances are cached and don't depend on horizon length — only `realized_target()`
+needs to change, not any LLM calls.
 
 ## Architecture, stack, and runtime
 
@@ -199,9 +221,10 @@ ollama pull llama3.1:8b   # or llama3.2:3b if that's too slow locally
 ## Run
 
 ```bash
-python src/stage0_verify_ollama.py   # confirm the local model responds at all
-python src/market_context.py         # sanity-check example generation
-python run_poc.py                    # full pipeline: data -> 372 examples -> train -> evaluate
+python src/stage0_verify_ollama.py    # confirm the local model responds at all
+python src/market_context.py          # sanity-check example generation
+python run_poc.py                     # full pipeline: data -> 372 examples -> train -> evaluate
+python src/analyze_significance.py    # honest, overlap-corrected significance + regime context
 ```
 
 The data-gathering step (~1,500 LLM calls) is the slow part and is safe to
