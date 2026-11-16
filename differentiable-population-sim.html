@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How differentiable population simulation actually works — concretely, with the math</title>
+<style>
+:root{
+  --ground:#f5f4f0; --panel:#ffffff; --panel-2:#f6f5f1; --ink:#1a1a1c; --ink-soft:#33342f;
+  --muted:#5f6058; --faint:#8c8d82; --line:#e5e3da; --line-strong:#d0cec2;
+  --accent:#b5641a; --accent-soft:#f0e2cf; --accent-ink:#8a4a10;
+  --teal:#256b64; --teal-soft:#d8e8e4;
+  --good:#2b6e46; --good-soft:#dcebdf; --warn:#a6640f; --danger:#a83c2c; --danger-soft:#f0dcd6;
+  --shadow:0 1px 2px rgba(26,26,28,.05),0 8px 28px -14px rgba(26,26,28,.14);
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --read:730px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --ground:#101113; --panel:#17181b; --panel-2:#1c1e21; --ink:#eceae4; --ink-soft:#cbc9c1;
+    --muted:#9a998e; --faint:#6d6d64; --line:#282a2d; --line-strong:#383a3d;
+    --accent:#dd9a4a; --accent-soft:#352a19; --accent-ink:#eeb463;
+    --teal:#54b5a7; --teal-soft:#16302c; --good:#54bd83; --good-soft:#14281c;
+    --warn:#dd9a4a; --danger:#e07b6a; --danger-soft:#2c1713;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px -16px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="light"]{--ground:#f5f4f0;--panel:#ffffff;--panel-2:#f6f5f1;--ink:#1a1a1c;--ink-soft:#33342f;--muted:#5f6058;--faint:#8c8d82;--line:#e5e3da;--line-strong:#d0cec2;--accent:#b5641a;--accent-soft:#f0e2cf;--accent-ink:#8a4a10;--teal:#256b64;--teal-soft:#d8e8e4;--good:#2b6e46;--good-soft:#dcebdf;--warn:#a6640f;--danger:#a83c2c;--danger-soft:#f0dcd6;--shadow:0 1px 2px rgba(26,26,28,.05),0 8px 28px -14px rgba(26,26,28,.14);}
+:root[data-theme="dark"]{--ground:#101113;--panel:#17181b;--panel-2:#1c1e21;--ink:#eceae4;--ink-soft:#cbc9c1;--muted:#9a998e;--faint:#6d6d64;--line:#282a2d;--line-strong:#383a3d;--accent:#dd9a4a;--accent-soft:#352a19;--accent-ink:#eeb463;--teal:#54b5a7;--teal-soft:#16302c;--good:#54bd83;--good-soft:#14281c;--warn:#dd9a4a;--danger:#e07b6a;--danger-soft:#2c1713;--shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px -16px rgba(0,0,0,.7);}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+  font-size:17.5px;line-height:1.72;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+h1,h2,h3,h4{font-family:var(--serif);font-weight:600;line-height:1.18;text-wrap:balance;margin:0}
+p{margin:0 0 1.05em}
+a{color:var(--accent-ink);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--accent) 38%,transparent)}
+a:hover{border-bottom-color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+em{font-style:italic}
+strong{font-weight:650}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.dim{color:var(--muted)}
+.wrap{max-width:var(--read);margin:0 auto;padding:0 24px}
+.wide{max-width:1080px;margin:0 auto;padding:0 24px}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-ink);font-weight:600}
+
+header.top{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--ground) 90%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top .bar{max-width:1180px;margin:0 auto;padding:0 24px;display:flex;align-items:center;gap:16px;height:54px}
+.brand{font-family:var(--mono);font-size:12px;letter-spacing:.05em;font-weight:600;white-space:nowrap}
+.brand b{color:var(--accent-ink)}
+nav.secs{display:flex;gap:2px;overflow-x:auto;flex:1;scrollbar-width:none}
+nav.secs::-webkit-scrollbar{display:none}
+nav.secs a{font-family:var(--mono);font-size:11.5px;color:var(--muted);padding:6px 9px;border-radius:6px;border-bottom:none;white-space:nowrap}
+nav.secs a:hover{color:var(--ink);background:var(--panel-2)}
+nav.secs a.active{color:var(--accent-ink);background:var(--accent-soft)}
+.themebtn{font-family:var(--mono);font-size:11px;background:var(--panel);border:1px solid var(--line-strong);color:var(--muted);border-radius:6px;padding:6px 9px;cursor:pointer}
+.themebtn:hover{color:var(--ink);border-color:var(--accent)}
+
+.hero{padding:70px 0 46px;border-bottom:1px solid var(--line);
+  background:radial-gradient(120% 80% at 85% -20%,var(--accent-soft) 0%,transparent 60%)}
+.hero h1{font-size:clamp(30px,5vw,50px);letter-spacing:-.015em;max-width:22ch}
+.hero .lede{font-size:clamp(18px,2.1vw,21px);color:var(--ink-soft);margin-top:22px}
+.hero .who{margin-top:22px;font-family:var(--mono);font-size:12px;color:var(--faint)}
+
+section{padding:56px 0;border-bottom:1px solid var(--line);scroll-margin-top:62px}
+.part-label{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:10px}
+h2.part{font-size:clamp(26px,3.6vw,38px);letter-spacing:-.015em;margin-bottom:6px}
+h3.sub{font-size:clamp(21px,2.6vw,26px);margin:44px 0 4px;letter-spacing:-.01em}
+h3.sub .n{font-family:var(--mono);font-size:15px;color:var(--accent);font-weight:600;margin-right:10px}
+h4.mini{font-size:18px;margin:26px 0 6px}
+.lead-in{color:var(--ink-soft);font-size:19px;margin:12px 0 8px}
+
+.box{border-radius:12px;padding:18px 22px;margin:22px 0;border:1px solid var(--line);background:var(--panel);box-shadow:var(--shadow)}
+.box .bt{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.box.def{border-left:4px solid var(--teal)} .box.def .bt{color:var(--teal)}
+.box.take{border-left:4px solid var(--accent);background:var(--accent-soft)} .box.take .bt{color:var(--accent-ink)}
+.box.work{border-left:4px solid var(--muted);background:var(--panel-2)} .box.work .bt{color:var(--muted)}
+.box.warn{border-left:4px solid var(--danger);background:var(--danger-soft)} .box.warn .bt{color:var(--danger)}
+.box.good{border-left:4px solid var(--good);background:var(--good-soft)} .box.good .bt{color:var(--good)}
+.box p:last-child{margin-bottom:0}
+.box .term{font-family:var(--serif);font-weight:600;font-style:italic}
+
+.verdict{border:1px solid var(--accent);border-left:6px solid var(--accent);border-radius:14px;background:linear-gradient(135deg,var(--accent-soft),var(--panel) 72%);
+  padding:24px 26px;margin:26px 0;box-shadow:var(--shadow)}
+.verdict .vt{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-ink);font-weight:700;margin-bottom:10px}
+.verdict h4{font-size:22px;margin:0 0 10px}
+.verdict p:last-child{margin-bottom:0}
+
+.eq{font-family:var(--serif);font-style:italic;font-size:19px;text-align:center;background:var(--panel-2);
+  border:1px solid var(--line);border-radius:10px;padding:20px 46px 20px 22px;margin:20px 0;position:relative;overflow-x:auto;line-height:2}
+.eq .en{position:absolute;right:14px;top:10px;font-family:var(--mono);font-style:normal;font-size:11px;color:var(--faint)}
+.eq .where{display:block;font-family:var(--sans);font-style:normal;font-size:13.5px;color:var(--muted);margin-top:12px;line-height:1.6;text-align:left}
+.m{font-family:var(--serif);font-style:italic}
+.frac{display:inline-flex;flex-direction:column;text-align:center;vertical-align:middle;margin:0 .18em;font-size:.92em}
+.frac>span:first-child{border-bottom:1.2px solid currentColor;padding:0 .4em;line-height:1.35}
+.frac>span:last-child{padding:0 .4em;line-height:1.35}
+sub{font-size:.72em} sup.p{font-size:.72em}
+
+pre.code{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.6;margin:18px 0;color:var(--ink-soft)}
+pre.code .c{color:var(--faint)}
+pre.code .k{color:var(--accent-ink)}
+code.inl{font-family:var(--mono);font-size:.86em;background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);margin:20px 0;background:var(--panel)}
+table.led{width:100%;border-collapse:collapse;font-size:15px;min-width:620px}
+table.led th{font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;text-align:left;color:var(--muted);padding:12px 16px;border-bottom:1px solid var(--line-strong);font-weight:600}
+table.led td{padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:top}
+table.led tr:last-child td{border-bottom:none}
+table.led td:first-child{font-weight:600}
+.yes{color:var(--good);font-weight:700}.no{color:var(--danger);font-weight:700}.mid{color:var(--warn);font-weight:700}
+.tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.tag.v{color:var(--good);background:var(--good-soft)} .tag.s{color:var(--warn);background:var(--accent-soft)} .tag.h{color:var(--danger);background:var(--danger-soft)}
+
+ul.clean{list-style:none;padding:0;margin:14px 0}
+ul.clean li{display:grid;grid-template-columns:24px 1fr;gap:10px;margin-bottom:12px;align-items:start}
+ul.clean li .ic{font-family:var(--mono);font-weight:700;margin-top:1px}
+ul.clean.ok li .ic{color:var(--good)}ul.clean.no li .ic{color:var(--danger)}ul.clean.step li .ic{color:var(--accent-ink)}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+
+.pipe{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;margin:20px 0;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+.pipe .st{flex:1;min-width:150px;padding:14px 16px;background:var(--panel);border-right:1px solid var(--line)}
+.pipe .st:last-child{border-right:none}
+.pipe .st .sn{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink);font-weight:700}
+.pipe .st .sd{font-size:13.5px;color:var(--ink-soft);margin-top:4px}
+
+.phase{display:grid;grid-template-columns:120px 1fr;gap:18px;padding:15px 0;border-bottom:1px solid var(--line)}
+.phase:last-child{border-bottom:none}
+.phase .pw{font-family:var(--mono);font-size:12.5px;color:var(--accent-ink);font-weight:600}
+
+/* gradient bar chart */
+.bars{margin:18px 0;border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:var(--shadow);padding:16px 18px}
+.bars .row{display:grid;grid-template-columns:120px 1fr 64px;gap:10px;align-items:center;margin:7px 0;font-size:13.5px}
+.bars .lab{font-family:var(--mono);font-size:12px;color:var(--ink-soft)}
+.bars .track{background:var(--panel-2);border-radius:6px;height:20px;overflow:hidden;border:1px solid var(--line)}
+.bars .fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-ink))}
+.bars .fill.lo{background:var(--line-strong)}
+.bars .val{font-family:var(--mono);font-size:12px;text-align:right;color:var(--muted)}
+
+.num{counter-reset:step}
+.step-li{display:grid;grid-template-columns:34px 1fr;gap:12px;margin:16px 0;align-items:start}
+.step-li .sc{counter-increment:step;font-family:var(--mono);font-weight:700;color:#fff;background:var(--accent);width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px}
+.step-li .sc::before{content:counter(step)}
+.step-li .sb{padding-top:2px}
+.refs{font-size:13.5px;color:var(--muted)}
+.refs p{margin:0 0 8px}.refs a{font-family:var(--mono);font-size:12px}
+.foot{padding:36px 0 72px;color:var(--faint);font-size:12.5px;font-family:var(--mono)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+html{scroll-behavior:smooth}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="bar">
+    <span class="brand">CONCRETELY <b>/</b> Differentiable Population Sim</span>
+    <nav class="secs" id="nav">
+      <a href="#claim">The claim</a>
+      <a href="#abm">1 · What an ABM is</a>
+      <a href="#problem">2 · Why it's hard</a>
+      <a href="#trick">3 · The gradient trick</a>
+      <a href="#coin">4 · Differentiable coin-flip</a>
+      <a href="#seir">5 · Worked SEIR run</a>
+      <a href="#oneshot">6 · "Don't simulate twice"</a>
+      <a href="#shoppers">7 · Retime 5%</a>
+      <a href="#personas">8 · Sarah &amp; Michael</a>
+      <a href="#ledger">9 · What's real</a>
+    </nav>
+    <button class="themebtn" id="themebtn" aria-label="Toggle theme">◐</button>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Concrete · define-then-use · every symbol explained</div>
+    <h1>Differentiable population simulation, taken apart</h1>
+    <p class="lede">You asked for the mechanics, not the vibes. This is exactly how a million-agent simulation is made <em>differentiable</em>, how a gradient "ripples a nudge through a population," how one run gives you the sensitivity to <em>every</em> parameter, and what "retime 5% of shoppers" really computes. Plus an honest accounting of what the LPM authors actually built vs. what they merely <em>wrote</em>.</p>
+    <p class="who">Built for Daniel · companion to <span class="mono">agenttorch-explained.html</span> &amp; <span class="mono">lpm-perspective-billion-agents.pdf</span></p>
+  </div>
+</div>
+
+<!-- ============================ THE CLAIM ============================ -->
+<section id="claim">
+  <div class="wrap">
+    <div class="part-label">Start here</div>
+    <h2 class="part">The sentence we're unpacking</h2>
+    <p class="lead-in">From the billion-agents paper, the one bullet with real engineering behind it:</p>
+    <div class="box take">
+      <div class="bt">▸ The claim, verbatim</div>
+      <p>"<em>Differentiable Population Simulation — unlike traditional agent-based simulations that merely predict outcomes, LPMs can trace how small changes ripple through entire populations. When millions of agents interact, these systems maintain end-to-end gradients that reveal unintuitive but effective coordination strategies.</em>"</p>
+    </div>
+    <p>Three phrases in there are doing all the work, and all three are precise technical objects, not metaphors:</p>
+    <ul class="clean step">
+      <li><span class="ic">1</span><span><strong>"maintain end-to-end gradients"</strong> — the whole simulation is written so that calculus (the derivative <span class="m">∂output / ∂input</span>) flows through it, start to finish, the same way it flows through a neural network.</span></li>
+      <li><span class="ic">2</span><span><strong>"trace how a small change ripples"</strong> — that derivative <em>is</em> the ripple. It literally says "if I nudge this input by a hair, the population-level output moves by <em>this</em> much."</span></li>
+      <li><span class="ic">3</span><span><strong>"reveal unintuitive strategies"</strong> — because you get one derivative <em>per input</em>, you can rank thousands of possible nudges by effect and find the few high-leverage ones you'd never guess by hand.</span></li>
+    </ul>
+    <p>The rest of this document builds each of those from the ground up. By the end, "retime 5% of shoppers to kill congestion" will read as a concrete calculation you could code.</p>
+  </div>
+</section>
+
+<!-- ============================ 1 · ABM ============================ -->
+<section id="abm">
+  <div class="wrap">
+    <div class="part-label">Part 1 · The object</div>
+    <h2 class="part">What an agent-based model actually is</h2>
+    <p class="lead-in">Before "differentiable," just "simulation." Strip away the jargon and an ABM is a <em>for-loop over people</em>.</p>
+
+    <div class="box def">
+      <div class="bt">▸ Definition — Agent-based model (ABM)</div>
+      <p>A program with <span class="m">N</span> little entities ("agents" — people, shoppers, firms, cars). Each agent carries a <span class="term">state</span> (e.g. <span class="mono">healthy / infected</span>, or a departure time). At every <span class="term">timestep</span> each agent looks at its own state and its neighbours' states, applies a <span class="term">rule</span>, and updates. Run the loop for <span class="m">T</span> steps and read off an <span class="term">aggregate</span> — a single number you care about, like "total infected" or "total congestion."</p>
+    </div>
+
+    <p>Concretely, the skeleton of <em>any</em> ABM is this:</p>
+    <pre class="code"><span class="c"># N agents, T timesteps, parameters θ (the knobs)</span>
+state = initial_states(N)              <span class="c"># e.g. 1% infected, rest healthy</span>
+for t in range(T):
+    for i in range(N):
+        neighbours = contacts_of(i)
+        p = rule(state[i], state[neighbours], <span class="k">θ</span>)   <span class="c"># a probability</span>
+        state[i] = sample(p)           <span class="c"># flip a weighted coin → new state</span>
+output = aggregate(state)              <span class="c"># one number, e.g. peak infections</span></pre>
+
+    <p>Two things to hold onto, because they're the whole plot:</p>
+    <ul class="clean step">
+      <li><span class="ic">θ</span><span><strong>θ (theta) are the knobs.</strong> Transmission rate, how many people get tested, the departure-time nudges — the things a policymaker could actually choose. Everything we want to <em>optimise</em> lives in θ.</span></li>
+      <li><span class="ic">⚅</span><span><strong><code class="inl">sample(p)</code> is a coin-flip.</strong> "Agent gets infected with probability <span class="m">p</span>" means: draw a random number, if it's below <span class="m">p</span> the agent flips to infected, else stays healthy. This innocent line is what breaks calculus — remember it for Part 2.</span></li>
+    </ul>
+
+    <div class="box work">
+      <div class="bt">▸ The traditional ABM's job — and its ceiling</div>
+      <p>Classic ABMs (epidemiology since the 2000s) <em>predict</em>: pick θ, run the loop, look at the curve. That's forward-only. To <em>improve</em> an outcome you're stuck guessing θ, re-running, and eyeballing — which is exactly the bottleneck Part 2 is about.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 2 · PROBLEM ============================ -->
+<section id="problem">
+  <div class="wrap">
+    <div class="part-label">Part 2 · The bottleneck</div>
+    <h2 class="part">Why "find the best intervention" is brutally hard</h2>
+    <p class="lead-in">Say you want the θ that minimises peak infections. Why can't you just... search? Two walls.</p>
+
+    <h3 class="sub"><span class="n">2.1</span>Wall one — the search space explodes</h3>
+    <p>Suppose the knob is "which 5% of a 1,000,000-person population should I ask to change behaviour?" The number of ways to pick 50,000 people out of a million is <span class="m">C(10<sup class="p">6</sup>, 5×10<sup class="p">4</sup>)</span> — a number with hundreds of thousands of digits. You cannot enumerate it. Not now, not ever.</p>
+
+    <h3 class="sub"><span class="n">2.2</span>Wall two — probing one knob at a time is expensive</h3>
+    <p>The classic workaround is <span class="term">finite differences</span>: to learn the effect of knob <span class="m">θ<sub>j</sub></span>, nudge it a tiny bit, re-run the <em>entire</em> simulation, and see how the output moved:</p>
+    <div class="eq"><span class="en">finite difference</span>
+      <span class="frac"><span>∂output</span><span>∂θ<sub>j</sub></span></span> ≈ <span class="frac"><span>output(θ<sub>j</sub> + ε) − output(θ<sub>j</sub>)</span><span>ε</span></span>
+      <span class="where"><strong>ε</strong> a tiny bump. <strong>The catch:</strong> this gives you the effect of <em>one</em> knob and costs <em>one whole simulation run</em>. For <span class="m">k</span> knobs you pay <span class="m">k + 1</span> full runs. With thousands of knobs over a million agents, that's the end of the road.</span>
+    </div>
+
+    <div class="box warn">
+      <div class="bt">▸ So the real problem is</div>
+      <p>We want <span class="m">∂output / ∂θ<sub>j</sub></span> for <em>thousands</em> of knobs <span class="m">j</span> — the full list of "which nudge helps and by how much" — <strong>without</strong> paying one simulation per knob, and <strong>without</strong> a coin-flip in the middle that has no derivative. Parts 3–6 solve exactly this.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 3 · TRICK ============================ -->
+<section id="trick">
+  <div class="wrap">
+    <div class="part-label">Part 3 · The core idea</div>
+    <h2 class="part">Treat the simulation like a neural network</h2>
+    <p class="lead-in">The insight borrowed from deep learning: if every step of your program is a differentiable math operation, a computer can hand you <em>all</em> the derivatives automatically. That machinery is called <span class="term">autodiff</span>, and it's the engine inside PyTorch / TensorFlow.</p>
+
+    <div class="box def">
+      <div class="bt">▸ Definition — Automatic differentiation (autodiff) &amp; the computation graph</div>
+      <p>When you compute an output by chaining operations (<span class="mono">multiply → add → exp → sum</span>), the library quietly records the chain as a <span class="term">graph</span>. Because it knows the derivative of each basic operation, it can apply the chain rule backwards through the whole graph and return <span class="m">∂output / ∂(every input)</span> — exactly, not approximately. This backward pass is called <span class="term">backpropagation</span>.</p>
+    </div>
+
+    <p>A neural network is just a long differentiable function from <em>weights</em> → <em>loss</em>. Training nudges the weights down the gradient. <strong>A differentiable ABM is the same shape</strong> — a long differentiable function from <em>policy knobs θ</em> → <em>outcome</em> — so you can nudge θ down the gradient toward a better outcome:</p>
+
+    <div class="pipe">
+      <div class="st"><div class="sn">Neural net</div><div class="sd">weights → layers → <strong>loss</strong>. Backprop gives ∂loss/∂weights. Step the weights.</div></div>
+      <div class="st"><div class="sn">Differentiable ABM</div><div class="sd">θ → T timesteps of agent rules → <strong>outcome</strong>. Backprop gives ∂outcome/∂θ. Step the knobs.</div></div>
+    </div>
+
+    <p>The <strong>"end-to-end gradient"</strong> phrase from the paper means precisely this: the graph is unbroken from θ all the way through <span class="m">T</span> steps of a million agents to the final number. Nothing in the middle severs the chain rule.</p>
+
+    <div class="box warn">
+      <div class="bt">▸ But there's one broken link</div>
+      <p>Layers of a neural net (matrix multiply, <span class="mono">ReLU</span>) are differentiable. But our agent rule ends in <code class="inl">sample(p)</code> — a coin-flip. A coin-flip has <strong>no derivative</strong>: nudge <span class="m">p</span> from 0.30 to 0.31 and the outcome is still either "infected" or "not," a hard 0/1 jump. The chain rule hits a wall. <strong>Fixing this one line is the actual technical contribution.</strong> That's Part 4.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 4 · COIN ============================ -->
+<section id="coin">
+  <div class="wrap">
+    <div class="part-label">Part 4 · The key maneuver</div>
+    <h2 class="part">How to differentiate a coin-flip</h2>
+    <p class="lead-in">The trick has two parts: (a) move the randomness somewhere that doesn't depend on θ, and (b) replace the hard 0/1 jump with a smooth S-curve. These are the <em>reparameterization trick</em> and <em>Gumbel-Softmax</em>.</p>
+
+    <h3 class="sub"><span class="n">4.1</span>Reparameterization — push the randomness outside</h3>
+    <p>The problem: in <code class="inl">z = sample(p)</code>, the randomness and the knob <span class="m">p</span> are tangled together, so you can't take a clean derivative w.r.t. <span class="m">p</span>. The fix: <em>rewrite</em> the same random draw so the knob and the noise are separate — the noise <span class="m">g</span> is drawn independently, and the output is a plain deterministic function of <span class="m">p</span> and <span class="m">g</span>:</p>
+    <div class="eq"><span class="en">reparameterization</span>
+      z = f(p, g),&nbsp;&nbsp;&nbsp; g ~ fixed noise (independent of p)
+      <span class="where">Now <em>given</em> the noise <span class="m">g</span>, <span class="m">z</span> is an ordinary function of <span class="m">p</span> you <em>can</em> differentiate. The randomness still happens — it just lives in <span class="m">g</span>, which has nothing to do with θ, so it doesn't block the gradient. (Same move that makes a VAE trainable, if you've seen those.)</span>
+    </div>
+
+    <h3 class="sub"><span class="n">4.2</span>Gumbel-Softmax — the smooth coin</h3>
+    <p>Now the shape of <span class="m">f</span>. To draw one of several categories (here: <span class="mono">infected</span> vs <span class="mono">healthy</span>) with probabilities <span class="m">π</span>, there's a classic exact recipe called the <span class="term">Gumbel-Max trick</span>: add a specific flavour of noise to each log-probability and take the biggest.</p>
+    <div class="eq"><span class="en">Gumbel-Max (exact, but hard)</span>
+      z = argmax<sub>k</sub> ( log π<sub>k</sub> + g<sub>k</sub> ),&nbsp;&nbsp; g<sub>k</sub> = −log(−log u<sub>k</sub>),&nbsp; u<sub>k</sub> ~ Uniform(0,1)
+      <span class="where">This genuinely samples category <span class="m">k</span> with probability <span class="m">π<sub>k</sub></span>. <strong>But <span class="mono">argmax</span> is a hard jump</strong> — same no-derivative problem. So we soften it.</span>
+    </div>
+    <p>Replace the hard <span class="mono">argmax</span> with a <span class="mono">softmax</span> at "temperature" <span class="m">τ</span> — a dial that controls how sharp the choice is:</p>
+    <div class="eq"><span class="en">Gumbel-Softmax (smooth, differentiable)</span>
+      y<sub>k</sub> = <span class="frac"><span>exp((log π<sub>k</sub> + g<sub>k</sub>) / τ)</span><span>Σ<sub>j</sub> exp((log π<sub>j</sub> + g<sub>j</sub>) / τ)</span></span>
+      <span class="where"><strong>y</strong> is now a soft vote, e.g. <span class="mono">[0.07 healthy, 0.93 infected]</span> instead of a hard <span class="mono">infected</span>. It's a smooth function of <span class="m">π</span> (hence of θ), so the derivative flows. <strong>τ (temperature)</strong> is the sharpness dial: large τ → mushy 50/50; as <span class="m">τ → 0</span> the S-curve snaps back to a real 0/1 coin-flip. Train with τ moderate (gradients flow), anneal it down so dynamics stay realistic.</span>
+    </div>
+
+    <h3 class="sub"><span class="n">4.3</span>Straight-through — best of both</h3>
+    <p>You often want the <em>forward</em> simulation to use a crisp 0/1 state (realistic: an agent is either infected or not) but still get a smooth <em>gradient</em> on the backward pass. The <span class="term">straight-through estimator</span> does exactly that — use the hard value going forward, the soft value's slope coming back:</p>
+    <pre class="code"><span class="c"># forward: crisp 0/1 ; backward: smooth gradient of y</span>
+hard  = onehot(argmax(y))                 <span class="c"># [0,1] — used by the simulation</span>
+state = hard + (y - y.detach())           <span class="c"># value == hard, gradient == dy</span>
+<span class="c"># detach() = "pretend this is a constant on the backward pass"</span></pre>
+
+    <div class="box good">
+      <div class="bt">▸ What we just bought</div>
+      <p>The one broken link from Part 3 is repaired. Every agent's state transition now carries a derivative. Chain those over a million agents and <span class="m">T</span> steps and the <em>entire</em> simulation is one big differentiable function — a graph backprop can run through. That is a differentiable population simulation, in one idea.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 5 · SEIR ============================ -->
+<section id="seir">
+  <div class="wide">
+    <div class="part-label">Part 5 · A run, end to end</div>
+    <h2 class="part">Worked example: a differentiable epidemic</h2>
+  </div>
+  <div class="wrap">
+    <p class="lead-in">This is Chopra et al.'s actual setting (<em>Differentiable Agent-Based Epidemiology</em>, AAMAS '23) — COVID, millions of agents, a real city's contact structure. Here it is reduced to its bones so every symbol is visible.</p>
+
+    <div class="box def">
+      <div class="bt">▸ The states — SEIR</div>
+      <p>Each agent is in one of four states: <span class="mono">S</span>usceptible (can catch it) → <span class="mono">E</span>xposed (infected, not yet infectious) → <span class="mono">I</span>nfectious → <span class="mono">R</span>ecovered. Every timestep, agents move between these by the rules below.</p>
+    </div>
+
+    <h3 class="sub"><span class="n">5.1</span>The infection rule, one susceptible agent</h3>
+    <p>Agent <span class="m">i</span> is susceptible. How likely to get infected this step? It depends on how many of its contacts are infectious, scaled by the transmission knob <span class="m">β</span>:</p>
+    <div class="eq"><span class="en">force of infection on i</span>
+      λ<sub>i,t</sub> = β · Σ<sub>j</sub> A<sub>ij</sub> · I<sub>j,t</sub>
+      <span class="where"><strong>β</strong> = transmission rate (a knob in θ). <strong>A<sub>ij</sub></strong> = 1 if <span class="m">i</span> and <span class="m">j</span> are in contact, else 0 (the contact network). <strong>I<sub>j,t</sub></strong> = 1 if contact <span class="m">j</span> is infectious at time <span class="m">t</span>. So <span class="m">λ<sub>i,t</sub></span> just counts infectious contacts, weighted by β.</span>
+    </div>
+    <div class="eq"><span class="en">probability i gets infected</span>
+      p<sub>i,t</sub> = 1 − e<sup class="p">−λ<sub>i,t</sub></sup>
+      <span class="where">Standard epidemiology: no infectious contacts → <span class="m">λ=0</span> → <span class="m">p=0</span>. Many infectious contacts → <span class="m">p</span> climbs toward 1. This is a smooth function of β — differentiable so far.</span>
+    </div>
+    <p>Then the state transition — and <em>here</em> is where Part 4 earns its keep. Instead of <code class="inl">sample(p)</code> (the derivative-killing coin-flip), we use the Gumbel-Softmax draw over <span class="mono">{stay S, become E}</span>:</p>
+    <div class="eq"><span class="en">differentiable transition</span>
+      state<sub>i,t+1</sub> = GumbelSoftmax( [1 − p<sub>i,t</sub>,&nbsp; p<sub>i,t</sub>],&nbsp; τ )
+      <span class="where">Randomly becomes exposed with probability <span class="m">p<sub>i,t</sub></span> — but as a smooth, differentiable draw. Recovery <span class="mono">I → R</span> works the same way with a recovery-rate knob <span class="m">γ</span>.</span>
+    </div>
+
+    <h3 class="sub"><span class="n">5.2</span>The aggregate and the loss</h3>
+    <p>Add up the infectious agents each day — that's the epidemic curve the simulation predicts:</p>
+    <div class="eq"><span class="en">predicted infections at time t</span>
+      Î<sub>t</sub>(θ) = Σ<sub>i</sub> state<sub>i,t</sub>[I]
+      <span class="where">A number per day, and — crucially — a differentiable function of all the knobs θ = (β, γ, …).</span>
+    </div>
+    <p>Now pick a <span class="term">loss</span> — the single number we want small. Two completely different jobs reuse the identical machinery:</p>
+    <div class="grid2">
+      <div class="box def">
+        <div class="bt">▸ Job A — Calibration (fit reality)</div>
+        <p>Make the simulation match real case data:</p>
+        <div class="eq" style="font-size:16px;padding:14px 20px"><span class="en"></span>L(θ) = Σ<sub>t</sub> ( Î<sub>t</sub>(θ) − I<sub>t</sub><sup class="p">obs</sup> )<sup class="p">2</sup></div>
+        <p style="font-size:14.5px">Smaller L = simulation tracks the observed curve better. Gradient descent on θ <em>finds the β, γ that explain the data.</em></p>
+      </div>
+      <div class="box take">
+        <div class="bt">▸ Job B — Policy (improve reality)</div>
+        <p>Make the epidemic smaller at acceptable cost:</p>
+        <div class="eq" style="font-size:16px;padding:14px 20px"><span class="en"></span>L(θ) = max<sub>t</sub> Î<sub>t</sub>(θ) + c · cost(θ)</div>
+        <p style="font-size:14.5px">θ now holds policy knobs (testing rate, contact reduction). Gradient descent <em>finds the intervention</em> that flattens the peak without overspending.</p>
+      </div>
+    </div>
+
+    <h3 class="sub"><span class="n">5.3</span>Backprop through time → step the knobs</h3>
+    <p>The simulation ran <span class="m">T</span> steps, each feeding the next — structurally identical to a recurrent neural network. So we differentiate it the same way: <span class="term">backpropagation through time</span> (BPTT) unrolls all <span class="m">T</span> steps and applies the chain rule backward through every one, returning the full gradient vector:</p>
+    <div class="eq"><span class="en">the ripple, made literal</span>
+      ∇<sub>θ</sub> L = ( <span class="frac"><span>∂L</span><span>∂θ<sub>1</sub></span></span>, <span class="frac"><span>∂L</span><span>∂θ<sub>2</sub></span></span>, …, <span class="frac"><span>∂L</span><span>∂θ<sub>k</sub></span></span> )
+      <span class="where">Each entry answers: "<em>if I nudge knob <span class="m">θ<sub>j</sub></span> a hair, how does the population-level outcome move, accounting for every downstream ripple across all agents and all T days?</em>" That vector <em>is</em> "tracing how a small change ripples through the entire population." It's not a metaphor — it's the gradient.</span>
+    </div>
+    <p>Then the ordinary gradient-descent step, identical to training any model:</p>
+    <div class="eq"><span class="en">improve the knobs</span>
+      θ ← θ − η · ∇<sub>θ</sub> L
+      <span class="where"><strong>η</strong> = learning rate (step size). Repeat a few hundred times and θ settles into the values that fit the data (Job A) or beat the epidemic (Job B).</span>
+    </div>
+
+    <div class="pipe">
+      <div class="st"><div class="sn">forward</div><div class="sd">Run T days of a million agents with current θ → epidemic curve → loss L.</div></div>
+      <div class="st"><div class="sn">backward (BPTT)</div><div class="sd">One sweep back through the graph → ∇<sub>θ</sub>L, the effect of every knob at once.</div></div>
+      <div class="st"><div class="sn">step</div><div class="sd">θ ← θ − η∇L. Repeat. θ converges to the fit / the optimal policy.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 6 · ONESHOT ============================ -->
+<section id="oneshot">
+  <div class="wrap">
+    <div class="part-label">Part 6 · The efficiency punchline</div>
+    <h2 class="part">"Don't simulate twice" — all sensitivities from one run</h2>
+    <p class="lead-in">This is the paper of that exact title (Quera-Bofarull et al., AAMAS '23). The joke in the name is a real theorem about cost.</p>
+
+    <div class="box def">
+      <div class="bt">▸ Definition — Sensitivity analysis</div>
+      <p>"How much does my result depend on each assumption?" For every input knob <span class="m">θ<sub>j</sub></span> you want <span class="m">∂output / ∂θ<sub>j</sub></span> — the list of which assumptions actually matter and which are noise. Essential for trusting a model, and for finding leverage.</p>
+    </div>
+
+    <p>The magic is a property of <strong>reverse-mode</strong> autodiff (the backward pass from Part 5):</p>
+    <div class="box take">
+      <div class="bt">▸ The key fact</div>
+      <p>One backward pass returns <span class="m">∂output / ∂θ<sub>j</sub></span> for <strong>every</strong> knob <span class="m">j</span> simultaneously — and its cost is independent of how many knobs there are. One forward + one backward ≈ 2–3× the cost of a single simulation run, whether you have 10 knobs or 10,000.</p>
+    </div>
+
+    <p>Set against the finite-difference method from Part 2, the gap is the whole point:</p>
+    <div class="tblwrap">
+      <table class="led">
+        <thead><tr><th>Method</th><th>Cost for k knobs</th><th>k = 1,000 knobs</th><th>Exact?</th></tr></thead>
+        <tbody>
+          <tr><td>Finite differences</td><td><span class="m">k + 1</span> full simulation runs</td><td class="no">1,001 runs</td><td><span class="mid">approx (ε error)</span></td></tr>
+          <tr><td>Reverse-mode autodiff</td><td>≈ 2–3× <em>one</em> run, any k</td><td class="yes">~1 run</td><td><span class="yes">exact</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>So "don't simulate twice" = <strong>don't pay one simulation per question</strong>; a single differentiated run answers "what is the effect of every knob?" at once. On a million-agent model where one run is already expensive, that's the difference between feasible and impossible.</p>
+  </div>
+</section>
+
+<!-- ============================ 7 · SHOPPERS ============================ -->
+<section id="shoppers">
+  <div class="wrap">
+    <div class="part-label">Part 7 · The headline example</div>
+    <h2 class="part">"Retime 5% of shoppers to kill congestion" — the real calculation</h2>
+    <p class="lead-in">Now the grocery example isn't hand-waving. Here's exactly what it computes.</p>
+
+    <ul class="clean step">
+      <li><span class="ic">1</span><span><strong>Set up.</strong> <span class="m">N</span> shoppers, each with a departure time <span class="m">t<sub>i</sub></span>. Knob per shopper: a nudge <span class="m">Δt<sub>i</sub></span> ("leave 15 min earlier/later"). The simulation moves everyone through the store and computes <span class="m">C</span> = total congestion (sum of crowding over aisles and time).</span></li>
+      <li><span class="ic">2</span><span><strong>One differentiated run.</strong> By Part 6, a single backward pass yields <span class="m">∂C / ∂Δt<sub>i</sub></span> for <em>all N shoppers at once</em> — each number says how much congestion falls (or rises) if that one shopper shifts.</span></li>
+      <li><span class="ic">3</span><span><strong>Rank by leverage.</strong> Sort shoppers by |gradient|. A handful have large gradients — shifting them drains a whole bottleneck; most have tiny ones — shifting them does nothing.</span></li>
+      <li><span class="ic">4</span><span><strong>Act on the top sliver.</strong> Nudge only the high-gradient 5%. Re-run to confirm. Congestion collapses — from changing 5%, not 100%.</span></li>
+    </ul>
+
+    <p>What the gradient vector looks like — only a few shoppers carry the leverage:</p>
+    <div class="bars">
+      <div class="row"><span class="lab">shopper #0412</span><span class="track"><span class="fill" style="width:95%"></span></span><span class="val">−0.91</span></div>
+      <div class="row"><span class="lab">shopper #8830</span><span class="track"><span class="fill" style="width:80%"></span></span><span class="val">−0.77</span></div>
+      <div class="row"><span class="lab">shopper #1174</span><span class="track"><span class="fill" style="width:68%"></span></span><span class="val">−0.65</span></div>
+      <div class="row"><span class="lab">shopper #5529</span><span class="track"><span class="fill lo" style="width:9%"></span></span><span class="val">−0.04</span></div>
+      <div class="row"><span class="lab">shopper #6301</span><span class="track"><span class="fill lo" style="width:5%"></span></span><span class="val">−0.02</span></div>
+      <div class="row"><span class="lab">…997,995 more</span><span class="track"><span class="fill lo" style="width:3%"></span></span><span class="val">≈0</span></div>
+    </div>
+
+    <div class="box take">
+      <div class="bt">▸ Why "unintuitive"</div>
+      <p>You could never eyeball <em>which</em> 5% matter — it's an emergent property of the whole contact pattern, like a single valve that drains a whole system. The gradient computes it directly. <strong>That</strong> is the sentence "reveal unintuitive but effective coordination strategies," made mechanical: it's <span class="mono">argsort(|∇<sub>θ</sub>C|)</span>.</p>
+    </div>
+
+    <div class="box warn">
+      <div class="bt">▸ The honest asterisk</div>
+      <p>This is only as true as the simulation's model of <em>how shoppers actually behave</em>. The gradient is exact <strong>with respect to the model</strong>; if the behavioural rules are wrong, you get a precise answer to the wrong question. The authors know this — their own paper <em>"On the limits of agency in agent-based models"</em> (AAMAS '25) is about this exact gap. It's the single biggest caveat on the whole approach, and the crux for any finance application.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 8 · PERSONAS ============================ -->
+<section id="personas">
+  <div class="wrap">
+    <div class="part-label">Part 8 · Your other question</div>
+    <h2 class="part">Sarah &amp; Michael — what did they actually <em>do</em>?</h2>
+    <p class="lead-in">You asked "how does this work, be exact, what did they do?" Here's the exact answer, and it's deflating on purpose: <strong>nothing technical happened. They wrote a short story.</strong></p>
+
+    <div class="box def">
+      <div class="bt">▸ What the personas are</div>
+      <p>Sarah Chen (a Kansas City restaurant owner in a pandemic) and Michael Roberts (planning Coachella) are <span class="term">fictional narrative devices</span>. The authors invented two characters and wrote one imagined paragraph per level (L1→L5) describing what their AI agents "would" do in 2030. That's the entire exercise. There is no Sarah, no data, no simulation of Sarah, no experiment. It's prose whose job is to make an abstract five-level ladder feel concrete to a reader.</p>
+    </div>
+
+    <p>Being exact about the status of each piece:</p>
+    <div class="tblwrap">
+      <table class="led">
+        <thead><tr><th>Claim in the Sarah/Michael story</th><th>What was actually done</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>L1 — agent monitors local COVID data for Sarah</td><td>Describes retrieval-augmented LLMs, which exist. But Sarah's agent was never built.</td><td><span class="tag s">illustration</span></td></tr>
+          <tr><td>L2–L3 — agents coordinate her suppliers &amp; a network of nearby businesses</td><td>Points at today's multi-agent LLM demos (10–1000 agents). Not demonstrated for this scenario.</td><td><span class="tag s">illustration</span></td></tr>
+          <tr><td>L4 — agent processes data from 250,000 Coachella attendees to find optimal spots</td><td>The <em>engine</em> (AgentTorch, million-agent differentiable sim) is real. This specific application is imagined.</td><td><span class="tag s">illustration of a real tool</span></td></tr>
+          <tr><td>L5 — devices form "immunity networks," crowds self-choreograph in physical space</td><td>Nothing. No method, no prototype. Pure speculation about the future.</td><td><span class="tag h">fiction</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="box warn">
+      <div class="bt">▸ Read it as what it is</div>
+      <p>The personas are <strong>rhetoric, not evidence</strong> — a legitimate device in a <em>position paper</em> (the paper literally says "hypothetical journeys"), but worth zero as proof that any of it works. When you evaluate the paper, mentally delete Sarah and Michael and ask "what's left that was actually built?" The answer is Part 9.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 9 · LEDGER ============================ -->
+<section id="ledger">
+  <div class="wide">
+    <div class="part-label">Part 9 · The honesty ledger</div>
+    <h2 class="part">What's genuinely built vs. what's a manifesto</h2>
+  </div>
+  <div class="wrap">
+    <p class="lead-in">Stripping the vision prose, here's the cited work that actually exists — each row is a real peer-reviewed paper with code, and what it concretely demonstrated.</p>
+
+    <div class="tblwrap">
+      <table class="led">
+        <thead><tr><th>Cited work</th><th>What it concretely did</th><th>Reality</th></tr></thead>
+        <tbody>
+          <tr><td>Differentiable agent-based epidemiology <span class="dim">[7] AAMAS '23</span></td><td>Built the SEIR model of Part 5. Gumbel-Softmax transitions, millions of agents, calibrated β/γ to real COVID data by gradient descent. The founding result.</td><td><span class="tag v">built + published</span></td></tr>
+          <tr><td>"Don't simulate twice" <span class="dim">[22] AAMAS '23</span></td><td>Showed one differentiated run yields sensitivity to all parameters at once (Part 6), vs. k+1 runs for finite differences.</td><td><span class="tag v">built + published</span></td></tr>
+          <tr><td>FLAME <span class="dim">[8] AAMAS '24</span></td><td>A framework for putting <em>learnable</em> components inside ABMs — the plumbing that makes differentiable ABMs reusable.</td><td><span class="tag v">built + published</span></td></tr>
+          <tr><td>Private agent-based modeling <span class="dim">[6] AAMAS '24</span></td><td>Ran ABMs over sensitive/decentralised data with privacy guarantees — the basis for the paper's "privacy-preserving, decentralised" claims.</td><td><span class="tag v">built + published</span></td></tr>
+          <tr><td>AgentTorch <span class="dim">[9]</span></td><td>The open-source library tying it together; million-scale differentiable agent simulation. The "L4 engine."</td><td><span class="tag v">real library</span></td></tr>
+          <tr><td>On the limits of agency in ABMs <span class="dim">[5] AAMAS '25</span></td><td>The authors' <em>own</em> critique — where LLM-as-agent behavioural models break down. The honest counterweight to Part 7's asterisk.</td><td><span class="tag v">built + published</span></td></tr>
+          <tr><td>The five-level framework (L1–L5)</td><td>A conceptual taxonomy proposed in <em>this</em> paper. No experiment tests it.</td><td><span class="tag s">framing</span></td></tr>
+          <tr><td>"Protocol fields," L5 physical integration, 60B agents</td><td>Asserted vision. No method, no prototype, no measurement.</td><td><span class="tag h">manifesto</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="verdict">
+      <div class="vt">Bottom line</div>
+      <h4>The engine is real; the cathedral around it is a pitch.</h4>
+      <p>"Differentiable population simulation" is a genuine, working, non-obvious technical contribution: make a million-agent sim differentiable (Gumbel-Softmax coin-flips), and gradient descent will both <em>fit</em> it to data and <em>search</em> it for high-leverage interventions — getting every parameter's effect in a single run. That part is built, peer-reviewed, and open-source.</p>
+      <p>Everything about L5, "protocol fields," and 60 billion agents is a position paper doing a position paper's job: planting a flag. And the load-bearing caveat for <em>your</em> fund is the authors' own Part 7 asterisk — the gradient is only as true as the behavioural model underneath. In epidemiology the behavioural model (who contacts whom) is decent. In markets, the behavioural model <em>is</em> the hard problem. That's precisely where the alpha — and the risk — would live.</p>
+    </div>
+
+    <div class="box take">
+      <div class="bt">▸ For the thesis</div>
+      <p>Map it straight onto the fund idea: replace "shoppers / departure times" with "market participants / positioning," and "congestion" with "price dislocation" or "drawdown." The question becomes <em>which small set of conditions, nudged, most moves the system</em> — answerable by one differentiated run <strong>if</strong> you can write down a believable differentiable model of how participants react. Building and validating <em>that</em> behavioural model is the whole game. Companion reading: <span class="mono">agenttorch-explained.html</span> (the engine from the source up) and <span class="mono">sim-alpha.html</span> (the thesis).</p>
+    </div>
+  </div>
+</section>
+
+<div class="foot">
+  <div class="wrap">
+    Built for Daniel · concrete mechanics of differentiable population simulation · companion to lpm-perspective-billion-agents.pdf, agenttorch-explained.html, sim-alpha.html · every symbol defined before use, verified work separated from manifesto.
+  </div>
+</div>
+
+<script>
+(function(){
+  var btn=document.getElementById('themebtn');
+  btn&&btn.addEventListener('click',function(){
+    var r=document.documentElement;
+    var cur=r.getAttribute('data-theme');
+    if(!cur){cur=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
+    r.setAttribute('data-theme',cur==='dark'?'light':'dark');
+  });
+  var links=[].slice.call(document.querySelectorAll('nav.secs a'));
+  var secs=links.map(function(a){return document.querySelector(a.getAttribute('href'));});
+  function onScroll(){
+    var y=window.scrollY+70,best=0;
+    for(var i=0;i<secs.length;i++){if(secs[i]&&secs[i].offsetTop<=y)best=i;}
+    links.forEach(function(a,i){a.classList.toggle('active',i===best);});
+  }
+  window.addEventListener('scroll',onScroll,{passive:true});onScroll();
+})();
+</script>
+</body>
+</html>
