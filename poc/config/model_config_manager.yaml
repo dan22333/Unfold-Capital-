@@ -1,0 +1,55 @@
+# AgentTorch Config for the manager-synthesis stage. Same shape as
+# model_config.yaml, but the Policy substep is `manager_stance` instead of
+# `decide_stance` -- the market population size (N examples) still gets
+# set at runtime in Python, same pattern.
+
+simulation_metadata:
+  device: 'cpu'
+  num_episodes: 1
+  num_steps_per_episode: 1
+  num_substeps_per_step: 1
+  calibration: false
+  visualize: false
+
+state:
+  environment: {}
+  objects: {}
+  network: {}
+  agents:
+    market:
+      number: 1  # overwritten at runtime to N examples
+      properties:
+        predicted_return:
+          name: 'Predicted Return'
+          learnable: false
+          shape:
+            - ${state.agents.market.number}
+            - 1
+          dtype: 'float'
+          value: 0.0
+          initialization_function: null
+
+substeps:
+  '0':
+    name: 'ManagerDecideAndPredict'
+    description: 'Manager synthesizes archetype views; sensitivity converts it to a predicted return'
+    active_agents:
+      - 'market'
+    observation:
+      market: null
+    policy:
+      market:
+        manager_stance:
+          generator: 'ManagerStance'
+          arguments: null
+          input_variables: {}
+          output_variables:
+            - manager_stance
+    transition:
+      compute_prediction_manager:
+        generator: 'ComputePredictionManager'
+        arguments: null
+        input_variables:
+          predicted_return: 'agents/market/predicted_return'
+        output_variables:
+          - predicted_return
